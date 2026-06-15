@@ -7,16 +7,21 @@
  * Activated with HELM_EXECUTION=sandbox. Default stays "host" (execCodex via
  * runner.ts) so nothing breaks without the env var.
  *
- * AUTH: Codex CLI authenticates via the operator's Codex login
- * (~/.codex/auth.json) — NO API key required. This module copies that login
- * file into the sandbox so the CLI works there exactly as it does locally.
- * Override the source path with HELM_CODEX_AUTH. An OPENAI_API_KEY, if set, is
- * also passed through, but it is NOT required — using the CLI login is the
- * default and supported path.
+ * AUTH — IMPORTANT EMPIRICAL FINDING (verified 2026-06-16):
+ * Copying the Codex CLI login (~/.codex/auth.json) into the sandbox does NOT
+ * work. A full run was exercised end-to-end (Vercel VM created via OIDC, codex
+ * installed, login injected, `codex exec` invoked) and OpenAI rejected the
+ * transplanted ChatGPT login with HTTP 401 — the login is bound to the local
+ * session/device and cannot be used from a remote sandbox.
  *
- * What IS verified: @vercel/sandbox can create a sandbox and run commands.
- * What is NOT verified end-to-end here: a full `codex exec` inside the sandbox
- * (needs a live Codex login present at HELM_CODEX_AUTH).
+ * THEREFORE: hosted/sandbox execution needs a real OPENAI_API_KEY, OR — the
+ * recommended path — use the pluggable provider layer (providers.ts) with a
+ * bring-your-own API key (anthropic/openai/openrouter), which works in the
+ * sandbox. Codex-CLI-in-sandbox is not a supported hosted path.
+ *
+ * Host mode (runner.ts, the default) uses the Codex CLI login locally and is
+ * fully verified. The auth.json injection below is retained as best-effort for
+ * any future OpenAI support but is known to 401 today.
  */
 
 import { readFileSync, existsSync } from "node:fs";

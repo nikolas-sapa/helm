@@ -82,7 +82,7 @@ npm test          # 39 unit tests across core / agent / runtime / cli
 ## Execution modes
 
 - **Host (default):** `codex exec` runs on the host machine via the local Codex login. Fully verified.
-- **Sandbox (`HELM_EXECUTION=sandbox`):** each run executes inside an isolated Vercel Sandbox (`@vercel/sandbox`). The sandbox create→run→stop lifecycle is verified live; codex is invoked as argv (no shell). **Not yet end-to-end**: codex isn't pre-installed in the sandbox base image and in-sandbox execution requires an `OPENAI_API_KEY` (the local ChatGPT login can't transfer). Requiring that key fails loud.
+- **Sandbox (`HELM_EXECUTION=sandbox`):** each run executes inside an isolated Vercel Sandbox (`@vercel/sandbox`). Verified end-to-end on 2026-06-16: the VM spins up (Vercel OIDC), codex installs, and `codex exec` runs (argv, no shell). **Finding:** the Codex CLI login (`~/.codex/auth.json`) copied into the sandbox is rejected by OpenAI with **401** — it's session/device-bound and cannot be transplanted. So sandbox execution needs a real `OPENAI_API_KEY`, or — recommended — use the **provider layer** with a BYO API key (`HELM_LLM_PROVIDER=anthropic|openai`), which runs fine in the sandbox. Codex-CLI-in-sandbox is not a supported hosted path; host mode (the default) uses the local Codex login and is fully verified.
 
 ## Known gaps (tracked, not hidden)
 
