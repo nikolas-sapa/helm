@@ -9,22 +9,30 @@ export type PriceTable = Record<string, ModelPrice>;
 
 /**
  * Operator-verified price table. These numbers are a BILLING path and MUST be
- * confirmed against Anthropic's official pricing before relying on spend
- * figures — do not trust them as-shipped. `computeCost` takes a table argument
- * so the math is tested independently of these specific numbers.
+ * confirmed against official pricing pages before relying on spend figures.
+ * `computeCost` takes a table argument so the math is tested independently of
+ * these specific numbers.
  *
- * TODO(verify): confirm each entry against current Anthropic pricing.
+ * Prices last verified: 2026-06-15.
  */
 export const PRICES: PriceTable = {
-  // model id -> { in, out } USD per 1M tokens  (VERIFY before billing)
-  // Codex / OpenAI (primary provider)
-  "gpt-5.4-mini": { in: 0, out: 0 },
+  // model id -> { in, out } USD per 1M tokens
+
+  // OpenAI (primary provider)
+  // Source: https://developers.openai.com/api/docs/pricing (retrieved 2026-06-15)
+  "gpt-5.4-mini": { in: 0.75, out: 4.50 },
+  // UNVERIFIED: model ID "gpt-5-codex" not found on OpenAI pricing page (2026-06-15).
+  // Closest listed ID is "gpt-5.3-codex" at $1.75 input / $14.00 output per 1M tokens.
   "gpt-5-codex": { in: 0, out: 0 },
+  // UNVERIFIED: model ID "gpt-5" not found on OpenAI pricing page (2026-06-15).
+  // Closest listed flagship is "gpt-5.5" at $5.00 input / $30.00 output per 1M tokens.
   "gpt-5": { in: 0, out: 0 },
+
   // Anthropic (fallback provider)
-  "claude-opus-4-8": { in: 0, out: 0 },
-  "claude-sonnet-4-6": { in: 0, out: 0 },
-  "claude-haiku-4-5": { in: 0, out: 0 },
+  // Source: https://platform.claude.com/docs/en/docs/about-claude/models/overview (retrieved 2026-06-15)
+  "claude-opus-4-8": { in: 5, out: 25 },
+  "claude-sonnet-4-6": { in: 3, out: 15 },
+  "claude-haiku-4-5": { in: 1, out: 5 },
 };
 
 /**
