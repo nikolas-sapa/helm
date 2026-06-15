@@ -7,3 +7,5 @@ spikes/convex-test/
 spikes/*.jsonl
 spikes/last.txt
 spikes/err.log
+apps/control-plane/.env.local
+apps/control-plane/convex/_generated/

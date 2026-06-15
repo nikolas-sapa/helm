@@ -1,0 +1,17 @@
+{
+  "name": "@helm/control-plane",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:convex": "convex dev",
+    "server": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@helm/core": "*",
+    "@helm/runtime": "*",
+    "convex": "1.40.0",
+    "hono": "^4.12.0",
+    "@hono/node-server": "^2.0.0"
+  }
+}
