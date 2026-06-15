@@ -7,111 +7,142 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <style>
+      /* Vercel-style system: Geist, near-monochrome, thin borders, white primary. */
       :root {
-        --bg: #0b0b0d;
-        --surface: #1a1a1e;
-        --border: #26262c;
-        --accent: #e55a1c;
-        --accent-hover: #c94a12;
-        --text: #f3f2ee;
-        --muted: #8b8d91;
-        --ok: #3fb950;
-        --warn: #e5a91c;
-        --bad: #e5484d;
+        --bg: #000000;
+        --surface: #0a0a0a;
+        --surface-2: #111111;
+        --border: #1f1f1f;
+        --border-strong: #2e2e2e;
+        --text: #ededed;
+        --muted: #a1a1a1;
+        --faint: #707070;
+        --accent: #e55a1c; /* used sparingly, on spend only */
+        --ok: #62c073;
+        --warn: #f5a623;
+        --bad: #ee5c54;
+        --r: 8px;
         --r-sm: 6px;
-        --r-md: 12px;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         background: var(--bg);
         color: var(--text);
-        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        font-family: "Geist", system-ui, -apple-system, sans-serif;
+        font-size: 14px;
         -webkit-font-smoothing: antialiased;
       }
-      h1, h2, h3 { font-family: "Sora", sans-serif; margin: 0; letter-spacing: -0.01em; }
+      h1, h2, h3 { margin: 0; letter-spacing: -0.02em; font-weight: 600; }
       code, .mono { font-family: "Geist Mono", monospace; }
+      a { color: inherit; }
+
       header {
-        display: flex; align-items: center; gap: 12px;
-        padding: 20px 32px; border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 10px;
+        padding: 0 24px; height: 56px;
+        border-bottom: 1px solid var(--border);
+        position: sticky; top: 0; background: rgba(0,0,0,.7);
+        backdrop-filter: saturate(180%) blur(8px); z-index: 10;
       }
-      .mark { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); }
-      header h1 { font-size: 18px; font-weight: 600; }
+      .logo { color: var(--text); display: flex; }
+      header h1 { font-size: 15px; font-weight: 600; }
+      header .slash { color: var(--border-strong); font-size: 18px; font-weight: 300; }
       header .tag { color: var(--muted); font-size: 13px; }
-      main { max-width: 1100px; margin: 0 auto; padding: 32px; }
-      .layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
-      @media (min-width: 900px) { .layout { grid-template-columns: 360px 1fr; } }
+
+      main { max-width: 1080px; margin: 0 auto; padding: 28px 24px 64px; }
+      .layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
+      @media (min-width: 900px) { .layout { grid-template-columns: 320px 1fr; align-items: start; } }
+
       .panel {
         background: var(--surface); border: 1px solid var(--border);
-        border-radius: var(--r-md); overflow: hidden;
+        border-radius: var(--r); overflow: hidden;
       }
-      .panel h2 { font-size: 13px; font-weight: 600; color: var(--muted);
-        text-transform: uppercase; letter-spacing: 0.06em; padding: 16px 18px;
+      .panel > h2 { font-size: 11px; font-weight: 500; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 16px;
         border-bottom: 1px solid var(--border); }
+
       .agent {
-        display: flex; flex-direction: column; gap: 4px; padding: 14px 18px;
-        border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s ease;
+        display: flex; flex-direction: column; gap: 5px; padding: 13px 16px;
+        border-bottom: 1px solid var(--border); cursor: pointer;
+        transition: background .12s ease;
       }
       .agent:last-child { border-bottom: none; }
-      .agent:hover { background: #202026; }
-      .agent.active { background: #202026; box-shadow: inset 3px 0 0 var(--accent); }
-      .agent .row { display: flex; justify-content: space-between; align-items: baseline; }
-      .agent .name { font-weight: 600; font-size: 15px; }
-      .agent .spend { font-family: "Geist Mono", monospace; font-size: 13px; color: var(--accent); }
-      .agent .sub { color: var(--muted); font-size: 12px; }
-      .empty { padding: 24px 18px; color: var(--muted); font-size: 14px; }
-      .detail-head { padding: 20px 22px; border-bottom: 1px solid var(--border); }
-      .detail-head h2 { font-family: "Sora"; font-size: 20px; text-transform: none;
-        letter-spacing: -0.01em; color: var(--text); padding: 0; border: none; }
-      .meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; color: var(--muted); font-size: 13px; }
-      .meta b { color: var(--text); font-weight: 500; }
+      .agent:hover { background: var(--surface-2); }
+      .agent.active { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--text); }
+      .agent .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+      .agent .name { font-weight: 500; font-size: 14px; letter-spacing: -0.01em; }
+      .agent .spend { font-family: "Geist Mono", monospace; font-size: 12.5px; color: var(--accent); }
+      .agent .sub { color: var(--faint); font-size: 12px; font-family: "Geist Mono", monospace; }
+      .empty { padding: 22px 16px; color: var(--muted); font-size: 13px; }
+
+      .detail-head { padding: 22px 22px 18px; border-bottom: 1px solid var(--border); }
+      .detail-head h2 { font-size: 19px; letter-spacing: -0.02em; }
+      .meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px;
+        color: var(--muted); font-size: 12.5px; }
+      .meta b { color: var(--text); font-weight: 500; font-family: "Geist Mono", monospace; }
+
       .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
         background: var(--border); border-bottom: 1px solid var(--border); }
       .stat { background: var(--surface); padding: 16px 18px; }
-      .stat .k { color: var(--muted); font-size: 12px; }
-      .stat .v { font-family: "Geist Mono"; font-size: 20px; margin-top: 4px; }
-      .section { padding: 18px 22px; }
-      .section h3 { font-size: 13px; color: var(--muted); text-transform: uppercase;
-        letter-spacing: 0.06em; margin-bottom: 12px; }
+      .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+      .stat .v { font-family: "Geist Mono"; font-size: 19px; margin-top: 6px; letter-spacing: -0.02em; }
+
+      .section { padding: 20px 22px; }
+      .section h3 { font-size: 11px; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 0.08em; margin-bottom: 14px; font-weight: 500; }
+
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px;
-        border-bottom: 1px solid var(--border); font-size: 12px; }
-      td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-family: "Geist Mono"; }
+      th { text-align: left; color: var(--faint); font-weight: 500; padding: 0 10px 10px;
+        border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+      td { padding: 11px 10px; border-bottom: 1px solid var(--border); font-family: "Geist Mono"; font-size: 12.5px; color: var(--muted); }
       tr:last-child td { border-bottom: none; }
-      .badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-sm);
-        font-size: 11px; font-family: "Plus Jakarta Sans"; font-weight: 600; }
-      .badge.ok { background: rgba(63,185,80,.14); color: var(--ok); }
-      .badge.failed { background: rgba(229,72,77,.14); color: var(--bad); }
-      .badge.blocked, .badge.budget_exceeded { background: rgba(229,169,28,.14); color: var(--warn); }
+      td:first-child, th:first-child { padding-left: 0; }
+
+      .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+        border-radius: 999px; font-size: 11px; font-family: "Geist", sans-serif; font-weight: 500;
+        border: 1px solid var(--border-strong); color: var(--muted); }
+      .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+      .badge.ok { color: var(--ok); } .badge.ok::before { background: var(--ok); }
+      .badge.failed { color: var(--bad); } .badge.failed::before { background: var(--bad); }
+      .badge.blocked, .badge.budget_exceeded { color: var(--warn); }
+      .badge.blocked::before, .badge.budget_exceeded::before { background: var(--warn); }
+
       form .field { margin-bottom: 14px; }
-      label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+      label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 7px; }
       input {
-        width: 100%; background: var(--bg); border: 1px solid var(--border);
+        width: 100%; background: var(--bg); border: 1px solid var(--border-strong);
         color: var(--text); border-radius: var(--r-sm); padding: 9px 11px;
-        font-family: "Geist Mono"; font-size: 13px;
+        font-family: "Geist Mono"; font-size: 13px; transition: border-color .12s ease;
       }
-      input:focus { outline: none; border-color: var(--accent); }
+      input:focus { outline: none; border-color: var(--text); }
       .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
       button {
-        background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm);
-        padding: 10px 16px; font-family: "Plus Jakarta Sans"; font-weight: 600;
-        font-size: 14px; cursor: pointer; transition: background .15s ease;
+        background: var(--text); color: #000; border: 1px solid var(--text); border-radius: var(--r-sm);
+        padding: 9px 15px; font-family: "Geist", sans-serif; font-weight: 500;
+        font-size: 13px; cursor: pointer; transition: opacity .12s ease;
       }
-      button:hover { background: var(--accent-hover); }
+      button:hover { opacity: 0.82; }
+
       .placeholder { display: flex; align-items: center; justify-content: center;
-        min-height: 320px; color: var(--muted); font-size: 14px; }
+        min-height: 300px; color: var(--faint); font-size: 13px; }
       .saved { color: var(--ok); font-size: 13px; margin-left: 12px; }
     </style>
   </head>
   <body>
     <header>
-      <div class="mark"></div>
+      <span class="logo" aria-hidden="true">
+        <svg width="20" height="18" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M37.527 0L75.054 65H0z" fill="currentColor" />
+        </svg>
+      </span>
       <h1>Helm</h1>
-      <span class="tag">internal agents · control plane</span>
+      <span class="slash">/</span>
+      <span class="tag">internal agents</span>
     </header>
     <main>
       <div class="layout">
