@@ -6,8 +6,9 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { ConvexHttpClient } from "convex/browser";
 import { hashBundle, evaluateBudget, type Policy } from "@helm/core";
-import { hashKey, verifyKey, redactInput, runCodexAgent } from "@helm/runtime";
+import { hashKey, verifyKey, redactInput, runCodexAgent, provisionWith } from "@helm/runtime";
 import { api } from "../convex/_generated/api.js";
+import { convexProvisioner } from "./convexProvisioner.js";
 
 // --- env: load CONVEX_URL from .env.local if not already in process.env ---
 const here = dirname(fileURLToPath(import.meta.url));
@@ -71,6 +72,18 @@ app.post("/api/deploy", async (c) => {
   const bundleHash = hashBundle(body.files);
   const key = "helm_" + randomBytes(24).toString("hex");
 
+  // Provision the agent's own Convex DB first. Fail loud if it errors, so we
+  // never register a half-deployed agent without its database.
+  let provisioned;
+  try {
+    provisioned = await provisionWith(convexProvisioner, slug);
+  } catch (e) {
+    return c.json(
+      { error: "convex provisioning failed", detail: e instanceof Error ? e.message : String(e) },
+      502,
+    );
+  }
+
   const agentId = await convex.mutation(api.agents.create, {
     adminToken: ADMIN_TOKEN!,
     name: body.name,
@@ -80,9 +93,17 @@ app.post("/api/deploy", async (c) => {
     keyHash: hashKey(key),
     model: body.model,
     bundleHash,
+    convexUrl: provisioned.url,
+    convexProjectId: provisioned.projectId,
   });
 
-  return c.json({ agentId, slug, agentUrl: `${BASE}/a/${slug}/run`, key });
+  return c.json({
+    agentId,
+    slug,
+    agentUrl: `${BASE}/a/${slug}/run`,
+    key,
+    convexUrl: provisioned.url,
+  });
 });
 
 /** Ingress: authenticate, gate on budget, run the agent, record spend. */
