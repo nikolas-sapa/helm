@@ -3,3 +3,7 @@ dist/
 .helm/
 *.log
 .env*
+spikes/convex-test/
+spikes/*.jsonl
+spikes/last.txt
+spikes/err.log
