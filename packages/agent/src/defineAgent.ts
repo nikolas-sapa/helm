@@ -1,18 +1,20 @@
 import type { FetchFn } from "./tools/fetch.js";
 
-/** Which model backend powers the agent's reasoning. Codex is primary; Anthropic is the fallback. */
-export type LlmProvider = "codex" | "anthropic";
+/**
+ * Which model backend powers the agent's reasoning.
+ *  - "codex"     → Codex CLI, authenticates via the operator's Codex login (no key). Default.
+ *  - "anthropic" → Anthropic Messages API (bring your own key)
+ *  - "openai"    → any OpenAI-compatible API (OpenAI, OpenRouter via baseUrl, …)
+ */
+export type LlmProvider = "codex" | "anthropic" | "openai";
 
 export interface LlmConfig {
   provider: LlmProvider;
   model: string;
-  /**
-   * API key when the provider is used in headless/API mode (e.g. OPENAI_API_KEY
-   * for Codex in a sandbox, or ANTHROPIC_API_KEY for the fallback). Optional
-   * because local Codex CLI execution authenticates via the user's ChatGPT
-   * login rather than a key.
-   */
+  /** API key for API-based providers. Not needed for "codex" (uses the CLI login). */
   apiKey?: string;
+  /** Base URL for OpenAI-compatible providers, e.g. https://openrouter.ai/api/v1 */
+  baseUrl?: string;
 }
 
 export interface AgentContext {

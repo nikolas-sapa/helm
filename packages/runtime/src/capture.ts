@@ -37,11 +37,19 @@ export function assembleResult(o: SandboxOutcome, prices?: PriceTable): RunResul
     : o.toolCalls.some((t) => !t.allowed)
       ? "blocked"
       : "ok";
+  // Known models get real cost; an unpriced bring-your-own model must not break
+  // the run — fall back to 0 (tokens are still recorded for later repricing).
+  let costUsd = 0;
+  try {
+    costUsd = computeCost(o.usage, prices);
+  } catch {
+    costUsd = 0;
+  }
   return {
     status,
     output: o.output,
     usage: o.usage,
-    costUsd: computeCost(o.usage, prices),
+    costUsd,
     toolCalls: o.toolCalls,
     durationMs: o.durationMs,
     error: o.error,

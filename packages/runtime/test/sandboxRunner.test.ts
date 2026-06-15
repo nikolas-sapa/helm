@@ -31,25 +31,31 @@ describe("isSandboxMode", () => {
   });
 });
 
-describe("runCodexAgentInSandbox — fail-loud without OPENAI_API_KEY", () => {
+describe("runCodexAgentInSandbox — auth requirements", () => {
   const originalKey = process.env.OPENAI_API_KEY;
+  const originalAuth = process.env.HELM_CODEX_AUTH;
   beforeEach(() => {
     delete process.env.OPENAI_API_KEY;
+    // Point at a path that does not exist so neither auth source is present.
+    process.env.HELM_CODEX_AUTH = "/nonexistent/helm-test/auth.json";
   });
   afterEach(() => {
     if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = originalKey;
+    if (originalAuth === undefined) delete process.env.HELM_CODEX_AUTH;
+    else process.env.HELM_CODEX_AUTH = originalAuth;
   });
 
-  it("throws a clear error when OPENAI_API_KEY is missing", async () => {
+  it("throws when neither a Codex login nor an OPENAI_API_KEY is available", async () => {
     await expect(runCodexAgentInSandbox({ prompt: "hello" })).rejects.toThrow(
-      /OPENAI_API_KEY/,
+      /Codex auth|codex login/i,
     );
   });
 
-  it("error message names the cause (ChatGPT login doesn't transfer)", async () => {
-    await expect(runCodexAgentInSandbox({ prompt: "hello" })).rejects.toThrow(
-      /ChatGPT login|auth\.json/,
-    );
+  it("rejects an invalid model id (defense-in-depth)", async () => {
+    process.env.OPENAI_API_KEY = "sk-test"; // satisfy the auth check
+    await expect(
+      runCodexAgentInSandbox({ prompt: "hi", model: "bad model; rm -rf /" }),
+    ).rejects.toThrow(/invalid model/i);
   });
 });

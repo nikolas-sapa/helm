@@ -10,9 +10,8 @@ import {
   hashKey,
   verifyKey,
   redactInput,
-  runCodexAgent,
-  runCodexAgentInSandbox,
-  isSandboxMode,
+  runWithProvider,
+  providerFromEnv,
   provisionWith,
 } from "@helm/runtime";
 import { api } from "../convex/_generated/api.js";
@@ -249,9 +248,10 @@ app.post("/a/:slug/run", async (c) => {
   if (agent.convexUrl) convexEnv.CONVEX_URL = agent.convexUrl;
   if (agent.convexDeployKey) convexEnv.CONVEX_DEPLOY_KEY = agent.convexDeployKey;
 
-  const result = isSandboxMode()
-    ? await runCodexAgentInSandbox({ prompt: input, model: agent.model, env: convexEnv })
-    : await runCodexAgent({ prompt: input, model: agent.model, env: convexEnv });
+  // Resolve the LLM backend: defaults to keyless Codex CLI; operators can set
+  // HELM_LLM_PROVIDER (anthropic/openai/openrouter-via-baseUrl) + key to switch.
+  const provider = providerFromEnv(agent.model ?? undefined);
+  const result = await runWithProvider(provider, { prompt: input, env: convexEnv });
 
   // Post-hoc per-run ceiling enforcement.
   const runTokens = result.usage.tokensIn + result.usage.tokensOut;

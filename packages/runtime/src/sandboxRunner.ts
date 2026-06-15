@@ -4,22 +4,24 @@
  * Activated with HELM_EXECUTION=sandbox. Default stays "host" (execCodex via
  * runner.ts) so nothing breaks without the env var.
  *
- * CRITICAL CONSTRAINT: Codex CLI authenticates locally via ~/.codex/auth.json
- * (a ChatGPT login). That credential does NOT transfer into a Vercel Sandbox.
- * Running `codex` inside a sandbox requires OPENAI_API_KEY. This module
- * enforces that requirement and injects the key, but whether codex-in-sandbox
- * works end-to-end has NOT been verified (no OpenAI key available in this
- * environment). The sandbox lifecycle itself (create → runCommand → stop) IS
- * verified working — see spikes/FINDINGS.md.
+ * Activated with HELM_EXECUTION=sandbox. Default stays "host" (execCodex via
+ * runner.ts) so nothing breaks without the env var.
  *
- * What IS verified:
- *   - @vercel/sandbox@2.1.1 can create a sandbox and run trivial commands
- *     (node -e "console.log('SANDBOX_OK')") successfully.
+ * AUTH: Codex CLI authenticates via the operator's Codex login
+ * (~/.codex/auth.json) — NO API key required. This module copies that login
+ * file into the sandbox so the CLI works there exactly as it does locally.
+ * Override the source path with HELM_CODEX_AUTH. An OPENAI_API_KEY, if set, is
+ * also passed through, but it is NOT required — using the CLI login is the
+ * default and supported path.
  *
- * What is NOT verified:
- *   - `codex exec` running inside the sandbox (requires OPENAI_API_KEY).
+ * What IS verified: @vercel/sandbox can create a sandbox and run commands.
+ * What is NOT verified end-to-end here: a full `codex exec` inside the sandbox
+ * (needs a live Codex login present at HELM_CODEX_AUTH).
  */
 
+import { readFileSync, existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { Sandbox } from "@vercel/sandbox";
 import type { PriceTable, RunResult } from "@helm/core";
 import { parseCodexEvents } from "./codex.js";
@@ -32,10 +34,14 @@ export interface SandboxRunOptions {
   prices?: PriceTable;
   /**
    * Environment variables to inject into the sandbox (e.g. CONVEX_URL,
-   * CONVEX_DEPLOY_KEY). OPENAI_API_KEY is injected automatically from
-   * process.env and is required.
+   * CONVEX_DEPLOY_KEY). Auth uses the Codex CLI login by default; no key needed.
    */
   env?: Record<string, string>;
+}
+
+/** Path to the Codex CLI login file to copy into the sandbox. */
+function codexAuthPath(): string {
+  return process.env.HELM_CODEX_AUTH ?? join(homedir(), ".codex", "auth.json");
 }
 
 const DEFAULT_MODEL = "gpt-5.4-mini";
@@ -58,19 +64,18 @@ export function isSandboxMode(): boolean {
  * The sandbox lifecycle: create → inject env (incl. OPENAI_API_KEY) → run
  * `codex exec` → parse JSONL events → stop sandbox → return RunResult.
  *
- * UNVERIFIED PATH: This function's codex execution step cannot be verified
- * without an OPENAI_API_KEY. Only the sandbox create/run/stop lifecycle has
- * been verified live.
+ * Auth uses the Codex CLI login (copied into the sandbox); no API key required.
  */
 export async function runCodexAgentInSandbox(opts: SandboxRunOptions): Promise<RunResult> {
+  const authPath = codexAuthPath();
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
+  if (!existsSync(authPath) && !openaiKey) {
     throw new Error(
-      "[HELM] HELM_EXECUTION=sandbox requires OPENAI_API_KEY. " +
-        "The local Codex auth (~/.codex/auth.json) does not transfer into a Vercel Sandbox. " +
-        "Set OPENAI_API_KEY and retry.",
+      `[HELM] sandbox execution needs Codex auth. Expected a Codex login at ${authPath} ` +
+        "(set HELM_CODEX_AUTH to override) or an OPENAI_API_KEY. Run `codex login` first.",
     );
   }
+  const codexAuth = existsSync(authPath) ? readFileSync(authPath, "utf8") : null;
 
   const model = opts.model ?? DEFAULT_MODEL;
   // Defense-in-depth: model flows into a subprocess invocation; reject anything
@@ -86,15 +91,18 @@ export async function runCodexAgentInSandbox(opts: SandboxRunOptions): Promise<R
     sandbox = await Sandbox.create({
       runtime: "node22",
       timeout: timeoutMs,
-      env: {
-        ...opts.env,
-        OPENAI_API_KEY: openaiKey,
-      },
+      // OPENAI_API_KEY passed through only if the operator set one; the CLI
+      // login (written below) is the default auth path.
+      env: { ...opts.env, ...(openaiKey ? { OPENAI_API_KEY: openaiKey } : {}) },
     });
 
-    // codex is not in the sandbox base image — install it first. Pinned for
-    // reproducibility. (UNVERIFIED end-to-end: requires OPENAI_API_KEY, absent
-    // in this environment, so the subsequent codex run can't be exercised here.)
+    // Copy the Codex CLI login into the sandbox so `codex` authenticates the
+    // same way it does locally — no API key required.
+    if (codexAuth) {
+      await sandbox.writeFiles([{ path: "/root/.codex/auth.json", content: codexAuth }]);
+    }
+
+    // codex is not in the sandbox base image — install it first (pinned).
     const install = await sandbox.runCommand("npm", ["install", "-g", "@openai/codex@0.139.0"]);
     if (install.exitCode !== 0) {
       const stderr = await install.stderr();
