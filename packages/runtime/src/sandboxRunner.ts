@@ -92,14 +92,27 @@ export async function runCodexAgentInSandbox(opts: SandboxRunOptions): Promise<R
       },
     });
 
+    // codex is not in the sandbox base image — install it first. Pinned for
+    // reproducibility. (UNVERIFIED end-to-end: requires OPENAI_API_KEY, absent
+    // in this environment, so the subsequent codex run can't be exercised here.)
+    const install = await sandbox.runCommand("npm", ["install", "-g", "@openai/codex@0.139.0"]);
+    if (install.exitCode !== 0) {
+      const stderr = await install.stderr();
+      return assembleResult(
+        {
+          output: null,
+          usage: { tokensIn: 0, tokensOut: 0, model },
+          toolCalls: [],
+          durationMs: Date.now() - startedAt,
+          error: `codex install failed (exit ${install.exitCode}): ${stderr.slice(0, 400)}`,
+        },
+        opts.prices,
+      );
+    }
+
     // Invoke codex directly as argv (no shell) so the prompt and model are
     // discrete arguments and cannot be shell-interpreted — closes command
     // injection. The prompt is passed as codex exec's positional PROMPT arg.
-    //
-    // UNVERIFIED: codex is not pre-installed in the Vercel Sandbox base image.
-    // A production implementation would need to install it (npm i -g @openai/codex
-    // or ship a bundle). This invocation is structurally correct but will fail
-    // until codex is available in the sandbox environment.
     const result = await sandbox.runCommand("codex", [
       "exec",
       "--json",
