@@ -54,9 +54,18 @@ const DASHBOARD_HTML = readFileSync(join(here, "dashboard.html"), "utf8");
 app.get("/health", (c) => c.json({ ok: true }));
 app.get("/", (c) => c.html(DASHBOARD_HTML));
 
-// ---- Dashboard read/write API (server holds the admin token) ----
+/** Admin gate: accept the secret via x-helm-admin header or Authorization Bearer. */
+function isAdmin(c: { req: { header: (n: string) => string | undefined } }): boolean {
+  const header = (c.req.header("x-helm-admin") ?? "").trim();
+  const bearer = (c.req.header("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const presented = header || bearer;
+  return presented.length > 0 && presented === ADMIN_TOKEN;
+}
+
+// ---- Dashboard read/write API (admin-gated; the browser presents the token) ----
 
 app.get("/api/agents", async (c) => {
+  if (!isAdmin(c)) return c.json({ error: "unauthorized" }, 401);
   const agents = await convex.query(api.agents.list, { adminToken: ADMIN_TOKEN! });
   const withStats = await Promise.all(
     agents.map(async (a) => {
@@ -79,6 +88,7 @@ app.get("/api/agents", async (c) => {
 });
 
 app.get("/api/agents/:slug", async (c) => {
+  if (!isAdmin(c)) return c.json({ error: "unauthorized" }, 401);
   const slug = c.req.param("slug");
   const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN! });
   if (!found?.agent) return c.json({ error: "not found" }, 404);
@@ -106,6 +116,7 @@ app.get("/api/agents/:slug", async (c) => {
 });
 
 app.post("/api/agents/:slug/policy", async (c) => {
+  if (!isAdmin(c)) return c.json({ error: "unauthorized" }, 401);
   const slug = c.req.param("slug");
   const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN! });
   if (!found?.agent) return c.json({ error: "not found" }, 404);
@@ -125,12 +136,6 @@ app.post("/api/agents/:slug/policy", async (c) => {
   });
   return c.json({ ok: true });
 });
-
-/** Admin gate for control-plane management endpoints (deploy, policy, etc.). */
-function isAdmin(c: { req: { header: (n: string) => string | undefined } }): boolean {
-  const presented = (c.req.header("x-helm-admin") ?? "").trim();
-  return presented.length > 0 && presented === ADMIN_TOKEN;
-}
 
 /** Deploy: register an agent, mint a key, create default policy + deployment. */
 app.post("/api/deploy", async (c) => {

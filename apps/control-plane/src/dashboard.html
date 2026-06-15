@@ -128,10 +128,34 @@
     <script>
       const fmtUsd = (n) => "$" + (n ?? 0).toFixed(4);
       const fmtTok = (n) => (n ?? 0).toLocaleString();
+      // Escape for HTML text AND attribute contexts (encodes " and ' too).
+      const esc = (s) =>
+        String(s ?? "").replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
       let activeSlug = null;
 
+      // --- admin token: prompt once, store for the session, send as Bearer ---
+      function getToken() {
+        let t = sessionStorage.getItem("helm_admin");
+        if (!t) {
+          t = window.prompt("Helm admin token") || "";
+          if (t) sessionStorage.setItem("helm_admin", t);
+        }
+        return t;
+      }
+      async function authedFetch(url, opts = {}) {
+        const headers = { ...(opts.headers || {}), authorization: "Bearer " + getToken() };
+        const res = await fetch(url, { ...opts, headers });
+        if (res.status === 401) {
+          sessionStorage.removeItem("helm_admin");
+          throw new Error("unauthorized — refresh and re-enter the admin token");
+        }
+        return res;
+      }
+
       async function loadAgents() {
-        const { agents } = await (await fetch("/api/agents")).json();
+        const { agents } = await (await authedFetch("/api/agents")).json();
         const el = document.getElementById("agent-list");
         if (!agents.length) {
           el.innerHTML = '<div class="empty">No agents yet. Deploy one with <code>helm deploy</code>.</div>';
@@ -140,9 +164,9 @@
         el.innerHTML = agents
           .map(
             (a) => `
-          <div class="agent ${a.slug === activeSlug ? "active" : ""}" data-slug="${a.slug}">
-            <div class="row"><span class="name">${a.name}</span><span class="spend">${fmtUsd(a.stats.costUsd)}</span></div>
-            <div class="row"><span class="sub">${a.slug} · ${a.model ?? "default"}</span><span class="sub">${a.stats.runs} runs</span></div>
+          <div class="agent ${a.slug === activeSlug ? "active" : ""}" data-slug="${esc(a.slug)}">
+            <div class="row"><span class="name">${esc(a.name)}</span><span class="spend">${fmtUsd(a.stats.costUsd)}</span></div>
+            <div class="row"><span class="sub">${esc(a.slug)} · ${esc(a.model ?? "default")}</span><span class="sub">${a.stats.runs} runs</span></div>
           </div>`,
           )
           .join("");
@@ -156,17 +180,20 @@
         document.querySelectorAll(".agent").forEach((n) =>
           n.classList.toggle("active", n.dataset.slug === slug),
         );
-        const d = await (await fetch("/api/agents/" + slug)).json();
+        const d = await (await authedFetch("/api/agents/" + encodeURIComponent(slug))).json();
         const p = d.policy || { allowedTools: [], allowedDomains: [], perRunTokenCeiling: 0, monthlyTokenCap: 0 };
+        // status drives a CSS class — whitelist it so it can never inject markup.
+        const statusClass = (s) =>
+          ["ok", "failed", "blocked", "budget_exceeded"].includes(s) ? s : "";
         const runRows = d.runs.length
           ? d.runs
               .map(
                 (r) => `<tr>
-              <td><span class="badge ${r.status}">${r.status}</span></td>
+              <td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td>
               <td>${fmtTok(r.tokensIn)}/${fmtTok(r.tokensOut)}</td>
               <td>${fmtUsd(r.costUsd)}</td>
-              <td>${r.durationMs} ms</td>
-              <td title="${(r.inputRedacted || "").replace(/"/g, "&quot;")}">${(r.inputRedacted || "").slice(0, 32)}</td>
+              <td>${Number(r.durationMs)} ms</td>
+              <td title="${esc(r.inputRedacted || "")}">${esc((r.inputRedacted || "").slice(0, 32))}</td>
             </tr>`,
               )
               .join("")
@@ -174,11 +201,11 @@
 
         document.getElementById("detail").innerHTML = `
           <div class="detail-head">
-            <h2>${d.agent.name}</h2>
+            <h2>${esc(d.agent.name)}</h2>
             <div class="meta">
-              <span>endpoint <b>/a/${d.agent.slug}/run</b></span>
-              <span>model <b>${d.agent.model ?? "default"}</b></span>
-              <span>db <b>${d.agent.convexUrl ? d.agent.convexUrl.replace("https://", "") : "—"}</b></span>
+              <span>endpoint <b>/a/${esc(d.agent.slug)}/run</b></span>
+              <span>model <b>${esc(d.agent.model ?? "default")}</b></span>
+              <span>db <b>${esc(d.agent.convexUrl ? d.agent.convexUrl.replace("https://", "") : "—")}</b></span>
             </div>
           </div>
           <div class="stats">
@@ -197,14 +224,14 @@
             <h3>Policy — what IT allows</h3>
             <form id="policy-form">
               <div class="field"><label>Allowed tools (comma-separated)</label>
-                <input name="allowedTools" value="${p.allowedTools.join(", ")}" /></div>
+                <input name="allowedTools" value="${esc(p.allowedTools.join(", "))}" /></div>
               <div class="field"><label>Allowed domains (comma-separated)</label>
-                <input name="allowedDomains" value="${p.allowedDomains.join(", ")}" placeholder="api.github.com" /></div>
+                <input name="allowedDomains" value="${esc(p.allowedDomains.join(", "))}" placeholder="api.github.com" /></div>
               <div class="grid2">
                 <div class="field"><label>Per-run token ceiling</label>
-                  <input name="perRunTokenCeiling" type="number" value="${p.perRunTokenCeiling}" /></div>
+                  <input name="perRunTokenCeiling" type="number" value="${Number(p.perRunTokenCeiling)}" /></div>
                 <div class="field"><label>Monthly token cap</label>
-                  <input name="monthlyTokenCap" type="number" value="${p.monthlyTokenCap}" /></div>
+                  <input name="monthlyTokenCap" type="number" value="${Number(p.monthlyTokenCap)}" /></div>
               </div>
               <button type="submit">Save policy</button>
               <span class="saved" id="saved" style="display:none">Saved</span>
@@ -215,7 +242,7 @@
           e.preventDefault();
           const f = e.target;
           const parseList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
-          await fetch("/api/agents/" + slug + "/policy", {
+          await authedFetch("/api/agents/" + encodeURIComponent(slug) + "/policy", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
