@@ -21,12 +21,6 @@ export const PRICES: PriceTable = {
   // OpenAI (primary provider)
   // Source: https://developers.openai.com/api/docs/pricing (retrieved 2026-06-15)
   "gpt-5.4-mini": { in: 0.75, out: 4.50 },
-  // UNVERIFIED: model ID "gpt-5-codex" not found on OpenAI pricing page (2026-06-15).
-  // Closest listed ID is "gpt-5.3-codex" at $1.75 input / $14.00 output per 1M tokens.
-  "gpt-5-codex": { in: 0, out: 0 },
-  // UNVERIFIED: model ID "gpt-5" not found on OpenAI pricing page (2026-06-15).
-  // Closest listed flagship is "gpt-5.5" at $5.00 input / $30.00 output per 1M tokens.
-  "gpt-5": { in: 0, out: 0 },
 
   // Anthropic (fallback provider)
   // Source: https://platform.claude.com/docs/en/docs/about-claude/models/overview (retrieved 2026-06-15)
