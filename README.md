@@ -2,7 +2,17 @@
 
 An employee writes an agent, runs one command, and gets **hosting + a Convex database**. IT scopes what each agent can touch, watches every execution, and tracks token spend per agent.
 
-Agents reason via **Codex** (Codex CLI / Codex models); Anthropic is a configured fallback.
+Agents reason via a **pluggable LLM backend**. Default is the **Codex CLI — no API key**, using the operator's Codex login. Operators can switch to any API provider by env:
+
+```bash
+# default: keyless Codex CLI (nothing to set)
+# or bring your own:
+HELM_LLM_PROVIDER=anthropic  HELM_LLM_API_KEY=sk-ant-…   HELM_LLM_MODEL=claude-sonnet-4-6
+HELM_LLM_PROVIDER=openai     HELM_LLM_API_KEY=sk-…        HELM_LLM_MODEL=gpt-4o-mini
+HELM_LLM_PROVIDER=openai     HELM_LLM_API_KEY=sk-or-…     HELM_LLM_BASE_URL=https://openrouter.ai/api/v1  HELM_LLM_MODEL=anthropic/claude-sonnet-4-6
+```
+
+`openai` is any OpenAI-compatible endpoint (OpenAI, OpenRouter, local). Unknown/BYO model prices default to $0 cost (tokens still recorded for repricing).
 
 ## What works today (verified end-to-end against real Codex + Convex)
 
