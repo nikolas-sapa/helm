@@ -139,7 +139,29 @@ Each unit: **what it does / how it's used / what it depends on.**
 
 ---
 
-## 11. Open Risks
+## 11. Resolved Decisions (grill-me decision log)
+
+| # | Decision | Locked answer |
+|---|---|---|
+| 1 | Tenancy | Single-org MVP; nullable `orgId` in schema so multi-tenant is additive later. |
+| 2 | Caller→agent auth | Per-agent bearer key, hashed at rest, shown once. |
+| 3 | Builder auth | Magic-link session for dashboard; CLI device token in `~/.helm/config.json`. |
+| 4 | Domain allowlist enforcement | Tool-layer (Helm-wrapped `fetch` checks allowlist), not network egress. Sandbox egress is best-effort only. |
+| 5 | Tool gating | Agent SDK `allowedTools` + permission callback is the primary gate; disallowed call recorded as `blocked`. |
+| 6 | Agent entrypoint contract | `@helm/agent` package exposing `defineAgent({ run(input, ctx) })`; repo root `agent.ts` default-exports it. `ctx` provides Convex client + wrapped tools. |
+| 7 | Convex provisioning | Attempt per-agent project via management API; fallback to shared deployment with per-agent table namespacing. Verified in Step-0 spike. |
+| 8 | Token budget | Hard per-run ceiling + rolling monthly cap per agent. |
+| 9 | Cost computation | Model-id→price table in `core`; computed from returned token usage. |
+| 10 | Ingress/runner host | Next.js route handler on Vercel = ingress + runner orchestration; spawns Vercel Sandbox. |
+| 11 | Secret redaction | Run records store truncated/hashed input; injected keys never logged (enforced in `capture`). |
+| 12 | MVP tool surface | Wrapped `fetch` (domain-gated), Convex DB client, LLM. Nothing else day one. |
+| 13 | Repo layout | npm workspaces monorepo: `packages/{cli,agent,core}`, `apps/dashboard`. |
+
+**Verified (npm):** `@anthropic-ai/claude-agent-sdk@0.3.177`, `@vercel/sandbox@2.2.1`, `convex@1.41.0` all exist and are current.
+
+**Deferred to Step-0 spike (build, not paper):** (a) Vercel Sandbox cold-start + bundle injection, (b) Convex programmatic project creation. Both have fallbacks; neither blocks the plan.
+
+## 12. Open Risks
 
 - **Vercel Sandbox cold-start latency** per run — acceptable for MVP (async/webhook), revisit with warm pools.
 - **Egress restriction fidelity** — sandbox-level domain allowlisting may be coarse; combine with Agent SDK permission callback as primary gate.
