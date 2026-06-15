@@ -18,6 +18,7 @@ export type PriceTable = Record<string, ModelPrice>;
 export const PRICES: PriceTable = {
   // model id -> { in, out } USD per 1M tokens  (VERIFY before billing)
   // Codex / OpenAI (primary provider)
+  "gpt-5.4-mini": { in: 0, out: 0 },
   "gpt-5-codex": { in: 0, out: 0 },
   "gpt-5": { in: 0, out: 0 },
   // Anthropic (fallback provider)
