@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -21,10 +21,10 @@
         --text: #ededed;
         --muted: #a1a1a1;
         --faint: #707070;
-        --accent: #e55a1c; /* used sparingly, on spend only */
-        --ok: #62c073;
-        --warn: #f5a623;
-        --bad: #ee5c54;
+        /* monochrome: status uses grayscale weight, not color */
+        --ok: #ededed;
+        --warn: #a1a1a1;
+        --bad: #ededed;
         --r: 8px;
         --r-sm: 6px;
       }
@@ -35,7 +35,12 @@
         color: var(--text);
         font-family: "Geist", system-ui, -apple-system, sans-serif;
         font-size: 14px;
+        line-height: 1.5;
         -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "cv01", "ss03"; /* Geist tabular-leaning, cleaner a/g */
+        font-variant-numeric: tabular-nums;
       }
       h1, h2, h3 { margin: 0; letter-spacing: -0.02em; font-weight: 600; }
       code, .mono { font-family: "Geist Mono", monospace; }
@@ -75,7 +80,7 @@
       .agent.active { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--text); }
       .agent .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
       .agent .name { font-weight: 500; font-size: 14px; letter-spacing: -0.01em; }
-      .agent .spend { font-family: "Geist Mono", monospace; font-size: 12.5px; color: var(--accent); }
+      .agent .spend { font-family: "Geist Mono", monospace; font-size: 12.5px; color: var(--text); }
       .agent .sub { color: var(--faint); font-size: 12px; font-family: "Geist Mono", monospace; }
       .empty { padding: 22px 16px; color: var(--muted); font-size: 13px; }
 
@@ -240,7 +245,7 @@
             </div>
           </div>
           <div class="stats">
-            <div class="stat"><div class="k">30-day spend</div><div class="v" style="color:var(--accent)">${fmtUsd(d.stats.costUsd)}</div></div>
+            <div class="stat"><div class="k">30-day spend</div><div class="v">${fmtUsd(d.stats.costUsd)}</div></div>
             <div class="stat"><div class="k">tokens (in/out)</div><div class="v">${fmtTok(d.stats.tokensIn)}/${fmtTok(d.stats.tokensOut)}</div></div>
             <div class="stat"><div class="k">runs</div><div class="v">${d.stats.runs}</div></div>
           </div>
