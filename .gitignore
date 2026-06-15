@@ -10,3 +10,4 @@ spikes/err.log
 apps/control-plane/.env.local
 apps/control-plane/convex/_generated/
 .scratch/
+.vercel

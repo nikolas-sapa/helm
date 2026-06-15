@@ -33,7 +33,26 @@ export const convexProvisioner: ProvisionApi = {
       );
       const url = readEnvVar(join(dir, ".env.local"), "CONVEX_URL");
       if (!url) throw new Error("provisioning produced no CONVEX_URL");
-      return { projectId: slug, url, adminKey: "" };
+
+      // Generate a deploy key for the new deployment and save it to .env.local.
+      // `convex deployment token create <name> --save-env` writes CONVEX_DEPLOY_KEY
+      // to .env.local targeting the deployment selected by the preceding `convex dev`.
+      // Verified non-interactive in spikes/FINDINGS.md (2026-06-15).
+      await run(
+        "npx",
+        ["convex", "deployment", "token", "create", `helm-key-${slug}`, "--save-env"],
+        dir,
+        30_000,
+      );
+      const adminKey = readEnvVar(join(dir, ".env.local"), "CONVEX_DEPLOY_KEY") ?? "";
+      if (!adminKey) {
+        // Non-fatal: agent still gets an isolated DB; writes from within the agent
+        // will be blocked until a key is manually generated.
+        // To fix: run `npx convex deployment token create <name> --save-env` in the
+        // project dir, then inject CONVEX_DEPLOY_KEY into the runner's env.
+        console.warn(`[helm] Warning: failed to generate deploy key for ${slug}; adminKey will be empty`);
+      }
+      return { projectId: slug, url, adminKey };
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
