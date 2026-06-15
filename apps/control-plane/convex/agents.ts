@@ -1,16 +1,19 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./lib";
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { adminToken: v.string() },
+  handler: async (ctx, { adminToken }) => {
+    requireAdmin(adminToken);
     return await ctx.db.query("agents").collect();
   },
 });
 
 export const getBySlug = query({
-  args: { slug: v.string() },
-  handler: async (ctx, { slug }) => {
+  args: { slug: v.string(), adminToken: v.string() },
+  handler: async (ctx, { slug, adminToken }) => {
+    requireAdmin(adminToken);
     const agent = await ctx.db
       .query("agents")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -26,6 +29,7 @@ export const getBySlug = query({
 
 export const create = mutation({
   args: {
+    adminToken: v.string(),
     name: v.string(),
     slug: v.string(),
     ownerId: v.string(),
@@ -36,6 +40,7 @@ export const create = mutation({
     convexProjectId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireAdmin(args.adminToken);
     const agentId = await ctx.db.insert("agents", {
       orgId: null,
       ownerId: args.ownerId,
@@ -66,6 +71,7 @@ export const create = mutation({
 
 export const setPolicy = mutation({
   args: {
+    adminToken: v.string(),
     agentId: v.id("agents"),
     allowedTools: v.array(v.string()),
     allowedDomains: v.array(v.string()),
@@ -73,6 +79,7 @@ export const setPolicy = mutation({
     monthlyTokenCap: v.number(),
   },
   handler: async (ctx, args) => {
+    requireAdmin(args.adminToken);
     const existing = await ctx.db
       .query("policies")
       .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))

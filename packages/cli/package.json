@@ -1,0 +1,11 @@
+{
+  "name": "@helm/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": { "helm": "src/index.ts" },
+  "dependencies": {
+    "@helm/core": "*",
+    "commander": "^15.0.0"
+  },
+  "scripts": { "test": "vitest run" }
+}

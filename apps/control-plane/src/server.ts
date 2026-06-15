@@ -23,20 +23,45 @@ function loadConvexUrl(): string {
   throw new Error("CONVEX_URL not set and not found in .env.local");
 }
 
+function loadEnvVar(name: string): string | undefined {
+  if (process.env[name]) return process.env[name];
+  const envPath = join(here, "..", ".env.local");
+  if (existsSync(envPath)) {
+    for (const line of readFileSync(envPath, "utf8").split("\n")) {
+      const m = line.match(new RegExp(`^${name}=(.*)$`));
+      if (m) return m[1].trim();
+    }
+  }
+  return undefined;
+}
+
 const convex = new ConvexHttpClient(loadConvexUrl());
 const PORT = Number(process.env.PORT ?? 8787);
 const BASE = process.env.HELM_BASE_URL ?? `http://localhost:${PORT}`;
+
+// Shared secret the trusted server presents to gated Convex functions. Must
+// match the deployment's HELM_ADMIN_TOKEN env var.
+const ADMIN_TOKEN = loadEnvVar("HELM_ADMIN_TOKEN");
+if (!ADMIN_TOKEN) {
+  throw new Error("HELM_ADMIN_TOKEN not set (process.env or .env.local) — refusing to start");
+}
 
 const app = new Hono();
 
 app.get("/health", (c) => c.json({ ok: true }));
 
+/** Admin gate for control-plane management endpoints (deploy, policy, etc.). */
+function isAdmin(c: { req: { header: (n: string) => string | undefined } }): boolean {
+  const presented = (c.req.header("x-helm-admin") ?? "").trim();
+  return presented.length > 0 && presented === ADMIN_TOKEN;
+}
+
 /** Deploy: register an agent, mint a key, create default policy + deployment. */
 app.post("/api/deploy", async (c) => {
+  if (!isAdmin(c)) return c.json({ error: "unauthorized" }, 401);
   const body = await c.req.json<{
     name: string;
     files: { path: string; content: string }[];
-    ownerId?: string;
     model?: string;
   }>();
   if (!body?.name || !Array.isArray(body.files)) {
@@ -47,9 +72,11 @@ app.post("/api/deploy", async (c) => {
   const key = "helm_" + randomBytes(24).toString("hex");
 
   const agentId = await convex.mutation(api.agents.create, {
+    adminToken: ADMIN_TOKEN!,
     name: body.name,
     slug,
-    ownerId: body.ownerId ?? "local",
+    // ownerId derived from the verified admin identity, never from the body.
+    ownerId: "admin",
     keyHash: hashKey(key),
     model: body.model,
     bundleHash,
@@ -64,7 +91,7 @@ app.post("/a/:slug/run", async (c) => {
   const auth = c.req.header("authorization") ?? "";
   const token = auth.replace(/^Bearer\s+/i, "");
 
-  const found = await convex.query(api.agents.getBySlug, { slug });
+  const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN! });
   if (!found?.agent) return c.json({ error: "agent not found" }, 404);
   const { agent, policy: rawPolicy } = found;
   if (agent.status !== "active") return c.json({ error: "agent disabled" }, 403);
@@ -80,10 +107,14 @@ app.post("/a/:slug/run", async (c) => {
   };
 
   // Pre-check: monthly cap (per-run ceiling enforced post-hoc below).
-  const monthTokens = await convex.query(api.runs.monthTokens, { agentId: agent._id });
+  const monthTokens = await convex.query(api.runs.monthTokens, {
+    agentId: agent._id,
+    adminToken: ADMIN_TOKEN!,
+  });
   const pre = evaluateBudget(policy, { runTokens: 0, monthTokens });
   if (!pre.ok) {
     await convex.mutation(api.runs.record, {
+      adminToken: ADMIN_TOKEN!,
       agentId: agent._id,
       inputRedacted: "",
       status: "budget_exceeded",
@@ -109,6 +140,7 @@ app.post("/a/:slug/run", async (c) => {
   const status = post.ok ? result.status : "budget_exceeded";
 
   await convex.mutation(api.runs.record, {
+    adminToken: ADMIN_TOKEN!,
     agentId: agent._id,
     inputRedacted: redactInput(input),
     status,
@@ -129,6 +161,6 @@ app.post("/a/:slug/run", async (c) => {
   });
 });
 
-serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`helm control-plane listening on http://localhost:${info.port}`);
+serve({ fetch: app.fetch, port: PORT, hostname: "127.0.0.1" }, (info) => {
+  console.log(`helm control-plane listening on http://127.0.0.1:${info.port}`);
 });
