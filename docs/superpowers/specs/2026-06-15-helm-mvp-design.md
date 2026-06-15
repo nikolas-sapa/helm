@@ -148,7 +148,8 @@ Each unit: **what it does / how it's used / what it depends on.**
 | 3 | Builder auth | Magic-link session for dashboard; CLI device token in `~/.helm/config.json`. |
 | 4 | Domain allowlist enforcement | Tool-layer (Helm-wrapped `fetch` checks allowlist), not network egress. Sandbox egress is best-effort only. |
 | 5 | Tool gating | Agent SDK `allowedTools` + permission callback is the primary gate; disallowed call recorded as `blocked`. |
-| 6 | Agent entrypoint contract | `@helm/agent` package exposing `defineAgent({ run(input, ctx) })`; repo root `agent.ts` default-exports it. `ctx` provides Convex client + wrapped tools. |
+| 6 | Agent entrypoint contract | `@helm/agent` package exposing `defineAgent({ run(input, ctx) })`; repo root `agent.ts` default-exports it. `ctx` provides Convex client + wrapped tools + `llm` config. |
+| 6b | Model provider | **Codex CLI + Codex models primary**, Anthropic programmatic usage as fallback. `AgentContext.llm` is provider-neutral (`provider: "codex"\|"anthropic"`). Runner shells out to `codex exec` locally (ChatGPT-login auth via `~/.codex/auth.json`). **Open:** hosted sandbox execution needs a server-side `OPENAI_API_KEY` (or Anthropic key) since the local ChatGPT login isn't a hosting credential — resolved in Step-0 spike. |
 | 7 | Convex provisioning | Attempt per-agent project via management API; fallback to shared deployment with per-agent table namespacing. Verified in Step-0 spike. |
 | 8 | Token budget | Hard per-run ceiling + rolling monthly cap per agent. |
 | 9 | Cost computation | Model-id→price table in `core`; computed from returned token usage. |
