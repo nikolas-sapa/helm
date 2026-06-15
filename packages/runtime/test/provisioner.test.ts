@@ -1,5 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
-import { provisionWith, type ProvisionApi } from "../src/provisioner.js";
+import { provisionWith, namespaceFor, type ProvisionApi } from "../src/provisioner.js";
+
+describe("namespaceFor", () => {
+  it("is injective — ids that a lossy transform would collide stay distinct", () => {
+    expect(namespaceFor("agent-1")).not.toBe(namespaceFor("agent.1"));
+    expect(namespaceFor("agent_1")).not.toBe(namespaceFor("agent-1"));
+  });
+  it("produces a valid identifier prefix", () => {
+    expect(namespaceFor("agent-1")).toMatch(/^ns_[0-9a-f]+$/);
+  });
+});
 
 describe("provisionWith", () => {
   it("returns creds on success", async () => {
@@ -25,7 +35,7 @@ describe("provisionWith", () => {
       adminKey: "shared",
     });
     expect(res.url).toBe("https://shared.convex.cloud");
-    expect(res.namespace).toBe("agent_1");
+    expect(res.namespace).toBe(namespaceFor("agent-1"));
   });
 
   it("rethrows when no fallback is provided", async () => {

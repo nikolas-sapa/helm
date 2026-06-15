@@ -20,6 +20,18 @@ export interface Provisioned {
  * back to a shared deployment with a per-agent table namespace. The concrete
  * `ProvisionApi` is wired from spikes/FINDINGS.md once Convex auth exists.
  */
+/**
+ * Derive a collision-free table namespace from an agent id. A lossy transform
+ * (e.g. replacing non-alphanumerics with "_") would map distinct ids like
+ * "agent-1" and "agent.1" to the same namespace and cross-contaminate tenants —
+ * unacceptable for the isolation guarantee. Hex-encoding the raw bytes is
+ * injective, so distinct ids always yield distinct namespaces, and the result
+ * is a valid identifier prefix.
+ */
+export function namespaceFor(agentId: string): string {
+  return "ns_" + Buffer.from(agentId, "utf8").toString("hex");
+}
+
 export async function provisionWith(
   api: ProvisionApi,
   agentId: string,
@@ -32,7 +44,7 @@ export async function provisionWith(
     return {
       url: shared.url,
       adminKey: shared.adminKey,
-      namespace: agentId.replace(/[^a-z0-9]/gi, "_").toLowerCase(),
+      namespace: namespaceFor(agentId),
     };
   }
 }
