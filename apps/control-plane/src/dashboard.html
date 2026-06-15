@@ -7,11 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..700&family=Geist+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <style>
-      /* Vercel-style system: Geist, near-monochrome, thin borders, white primary. */
+      /* Black & white system: DM Sans (smooth/rounded) + Geist Mono for figures. */
       :root {
         --bg: #000000;
         --surface: #0a0a0a;
@@ -33,13 +33,12 @@
         margin: 0;
         background: var(--bg);
         color: var(--text);
-        font-family: "Geist", system-ui, -apple-system, sans-serif;
+        font-family: "DM Sans", system-ui, -apple-system, sans-serif;
         font-size: 14px;
         line-height: 1.5;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
-        font-feature-settings: "cv01", "ss03"; /* Geist tabular-leaning, cleaner a/g */
         font-variant-numeric: tabular-nums;
       }
       h1, h2, h3 { margin: 0; letter-spacing: -0.02em; font-weight: 600; }
@@ -108,7 +107,7 @@
       td:first-child, th:first-child { padding-left: 0; }
 
       .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
-        border-radius: 999px; font-size: 11px; font-family: "Geist", sans-serif; font-weight: 500;
+        border-radius: 999px; font-size: 11px; font-family: "DM Sans", sans-serif; font-weight: 500;
         border: 1px solid var(--border-strong); color: var(--muted); }
       .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
       .badge.ok { color: var(--ok); } .badge.ok::before { background: var(--ok); }
@@ -128,7 +127,7 @@
 
       button {
         background: var(--text); color: #000; border: 1px solid var(--text); border-radius: var(--r-sm);
-        padding: 9px 15px; font-family: "Geist", sans-serif; font-weight: 500;
+        padding: 9px 15px; font-family: "DM Sans", sans-serif; font-weight: 500;
         font-size: 13px; cursor: pointer; transition: opacity .12s ease;
       }
       button:hover { opacity: 0.82; }
