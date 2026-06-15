@@ -74,4 +74,4 @@ npm test          # 39 unit tests across core / agent / runtime / cli
 - **Pricing is zeroed** in `packages/core/src/cost.ts` (`TODO(verify)`) — cost math is correct but `costUsd` reads $0 until real Codex/Anthropic prices are filled in. Deliberate: no billing numbers from memory.
 - **Execution runs `codex` on the host**, not yet inside an isolated Vercel Sandbox — fine for local MVP, required before multi-tenant hosting.
 - **Agent DB write auth**: provisioning returns the per-agent Convex URL but not yet a deploy key, so agents can't write to their DB until that's wired (see `spikes/FINDINGS.md`).
-- Dashboard read endpoints are unauthenticated but bound to `127.0.0.1` (single-user local MVP).
+- Dashboard API is gated by the admin token (sent as a Bearer header; the page prompts for it). For production, swap the prompt for a real session/SSO login.
