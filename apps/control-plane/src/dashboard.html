@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Helm — internal agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0b0d;
+        --surface: #1a1a1e;
+        --border: #26262c;
+        --accent: #e55a1c;
+        --accent-hover: #c94a12;
+        --text: #f3f2ee;
+        --muted: #8b8d91;
+        --ok: #3fb950;
+        --warn: #e5a91c;
+        --bad: #e5484d;
+        --r-sm: 6px;
+        --r-md: 12px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      h1, h2, h3 { font-family: "Sora", sans-serif; margin: 0; letter-spacing: -0.01em; }
+      code, .mono { font-family: "Geist Mono", monospace; }
+      header {
+        display: flex; align-items: center; gap: 12px;
+        padding: 20px 32px; border-bottom: 1px solid var(--border);
+      }
+      .mark { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); }
+      header h1 { font-size: 18px; font-weight: 600; }
+      header .tag { color: var(--muted); font-size: 13px; }
+      main { max-width: 1100px; margin: 0 auto; padding: 32px; }
+      .layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
+      @media (min-width: 900px) { .layout { grid-template-columns: 360px 1fr; } }
+      .panel {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-md); overflow: hidden;
+      }
+      .panel h2 { font-size: 13px; font-weight: 600; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.06em; padding: 16px 18px;
+        border-bottom: 1px solid var(--border); }
+      .agent {
+        display: flex; flex-direction: column; gap: 4px; padding: 14px 18px;
+        border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s ease;
+      }
+      .agent:last-child { border-bottom: none; }
+      .agent:hover { background: #202026; }
+      .agent.active { background: #202026; box-shadow: inset 3px 0 0 var(--accent); }
+      .agent .row { display: flex; justify-content: space-between; align-items: baseline; }
+      .agent .name { font-weight: 600; font-size: 15px; }
+      .agent .spend { font-family: "Geist Mono", monospace; font-size: 13px; color: var(--accent); }
+      .agent .sub { color: var(--muted); font-size: 12px; }
+      .empty { padding: 24px 18px; color: var(--muted); font-size: 14px; }
+      .detail-head { padding: 20px 22px; border-bottom: 1px solid var(--border); }
+      .detail-head h2 { font-family: "Sora"; font-size: 20px; text-transform: none;
+        letter-spacing: -0.01em; color: var(--text); padding: 0; border: none; }
+      .meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; color: var(--muted); font-size: 13px; }
+      .meta b { color: var(--text); font-weight: 500; }
+      .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+        background: var(--border); border-bottom: 1px solid var(--border); }
+      .stat { background: var(--surface); padding: 16px 18px; }
+      .stat .k { color: var(--muted); font-size: 12px; }
+      .stat .v { font-family: "Geist Mono"; font-size: 20px; margin-top: 4px; }
+      .section { padding: 18px 22px; }
+      .section h3 { font-size: 13px; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 0.06em; margin-bottom: 12px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px;
+        border-bottom: 1px solid var(--border); font-size: 12px; }
+      td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-family: "Geist Mono"; }
+      tr:last-child td { border-bottom: none; }
+      .badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-sm);
+        font-size: 11px; font-family: "Plus Jakarta Sans"; font-weight: 600; }
+      .badge.ok { background: rgba(63,185,80,.14); color: var(--ok); }
+      .badge.failed { background: rgba(229,72,77,.14); color: var(--bad); }
+      .badge.blocked, .badge.budget_exceeded { background: rgba(229,169,28,.14); color: var(--warn); }
+      form .field { margin-bottom: 14px; }
+      label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+      input {
+        width: 100%; background: var(--bg); border: 1px solid var(--border);
+        color: var(--text); border-radius: var(--r-sm); padding: 9px 11px;
+        font-family: "Geist Mono"; font-size: 13px;
+      }
+      input:focus { outline: none; border-color: var(--accent); }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      button {
+        background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm);
+        padding: 10px 16px; font-family: "Plus Jakarta Sans"; font-weight: 600;
+        font-size: 14px; cursor: pointer; transition: background .15s ease;
+      }
+      button:hover { background: var(--accent-hover); }
+      .placeholder { display: flex; align-items: center; justify-content: center;
+        min-height: 320px; color: var(--muted); font-size: 14px; }
+      .saved { color: var(--ok); font-size: 13px; margin-left: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="mark"></div>
+      <h1>Helm</h1>
+      <span class="tag">internal agents · control plane</span>
+    </header>
+    <main>
+      <div class="layout">
+        <div class="panel">
+          <h2>Agents</h2>
+          <div id="agent-list"><div class="empty">Loading…</div></div>
+        </div>
+        <div class="panel" id="detail">
+          <div class="placeholder">Select an agent to see runs, spend and policy.</div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const fmtUsd = (n) => "$" + (n ?? 0).toFixed(4);
+      const fmtTok = (n) => (n ?? 0).toLocaleString();
+      let activeSlug = null;
+
+      async function loadAgents() {
+        const { agents } = await (await fetch("/api/agents")).json();
+        const el = document.getElementById("agent-list");
+        if (!agents.length) {
+          el.innerHTML = '<div class="empty">No agents yet. Deploy one with <code>helm deploy</code>.</div>';
+          return;
+        }
+        el.innerHTML = agents
+          .map(
+            (a) => `
+          <div class="agent ${a.slug === activeSlug ? "active" : ""}" data-slug="${a.slug}">
+            <div class="row"><span class="name">${a.name}</span><span class="spend">${fmtUsd(a.stats.costUsd)}</span></div>
+            <div class="row"><span class="sub">${a.slug} · ${a.model ?? "default"}</span><span class="sub">${a.stats.runs} runs</span></div>
+          </div>`,
+          )
+          .join("");
+        el.querySelectorAll(".agent").forEach((n) =>
+          n.addEventListener("click", () => loadDetail(n.dataset.slug)),
+        );
+      }
+
+      async function loadDetail(slug) {
+        activeSlug = slug;
+        document.querySelectorAll(".agent").forEach((n) =>
+          n.classList.toggle("active", n.dataset.slug === slug),
+        );
+        const d = await (await fetch("/api/agents/" + slug)).json();
+        const p = d.policy || { allowedTools: [], allowedDomains: [], perRunTokenCeiling: 0, monthlyTokenCap: 0 };
+        const runRows = d.runs.length
+          ? d.runs
+              .map(
+                (r) => `<tr>
+              <td><span class="badge ${r.status}">${r.status}</span></td>
+              <td>${fmtTok(r.tokensIn)}/${fmtTok(r.tokensOut)}</td>
+              <td>${fmtUsd(r.costUsd)}</td>
+              <td>${r.durationMs} ms</td>
+              <td title="${(r.inputRedacted || "").replace(/"/g, "&quot;")}">${(r.inputRedacted || "").slice(0, 32)}</td>
+            </tr>`,
+              )
+              .join("")
+          : '<tr><td colspan="5" style="color:var(--muted)">No runs yet.</td></tr>';
+
+        document.getElementById("detail").innerHTML = `
+          <div class="detail-head">
+            <h2>${d.agent.name}</h2>
+            <div class="meta">
+              <span>endpoint <b>/a/${d.agent.slug}/run</b></span>
+              <span>model <b>${d.agent.model ?? "default"}</b></span>
+              <span>db <b>${d.agent.convexUrl ? d.agent.convexUrl.replace("https://", "") : "—"}</b></span>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="k">30-day spend</div><div class="v" style="color:var(--accent)">${fmtUsd(d.stats.costUsd)}</div></div>
+            <div class="stat"><div class="k">tokens (in/out)</div><div class="v">${fmtTok(d.stats.tokensIn)}/${fmtTok(d.stats.tokensOut)}</div></div>
+            <div class="stat"><div class="k">runs</div><div class="v">${d.stats.runs}</div></div>
+          </div>
+          <div class="section">
+            <h3>Recent runs</h3>
+            <table>
+              <thead><tr><th>status</th><th>tokens</th><th>cost</th><th>duration</th><th>input</th></tr></thead>
+              <tbody>${runRows}</tbody>
+            </table>
+          </div>
+          <div class="section" style="border-top:1px solid var(--border)">
+            <h3>Policy — what IT allows</h3>
+            <form id="policy-form">
+              <div class="field"><label>Allowed tools (comma-separated)</label>
+                <input name="allowedTools" value="${p.allowedTools.join(", ")}" /></div>
+              <div class="field"><label>Allowed domains (comma-separated)</label>
+                <input name="allowedDomains" value="${p.allowedDomains.join(", ")}" placeholder="api.github.com" /></div>
+              <div class="grid2">
+                <div class="field"><label>Per-run token ceiling</label>
+                  <input name="perRunTokenCeiling" type="number" value="${p.perRunTokenCeiling}" /></div>
+                <div class="field"><label>Monthly token cap</label>
+                  <input name="monthlyTokenCap" type="number" value="${p.monthlyTokenCap}" /></div>
+              </div>
+              <button type="submit">Save policy</button>
+              <span class="saved" id="saved" style="display:none">Saved</span>
+            </form>
+          </div>`;
+
+        document.getElementById("policy-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const f = e.target;
+          const parseList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+          await fetch("/api/agents/" + slug + "/policy", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              allowedTools: parseList(f.allowedTools.value),
+              allowedDomains: parseList(f.allowedDomains.value),
+              perRunTokenCeiling: Number(f.perRunTokenCeiling.value),
+              monthlyTokenCap: Number(f.monthlyTokenCap.value),
+            }),
+          });
+          const s = document.getElementById("saved");
+          s.style.display = "inline";
+          setTimeout(() => (s.style.display = "none"), 1500);
+          loadAgents();
+        });
+      }
+
+      loadAgents();
+    </script>
+  </body>
+</html>

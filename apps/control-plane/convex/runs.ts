@@ -39,6 +39,32 @@ export const listByAgent = query({
   },
 });
 
+/** 30-day usage stats for one agent — powers the dashboard spend column. */
+export const statsByAgent = query({
+  args: { agentId: v.id("agents"), adminToken: v.string() },
+  handler: async (ctx, { agentId, adminToken }) => {
+    requireAdmin(adminToken);
+    const cutoff = Date.now() - THIRTY_DAYS_MS;
+    const recent = await ctx.db
+      .query("runs")
+      .withIndex("by_agent", (q) => q.eq("agentId", agentId))
+      .order("desc")
+      .collect();
+    let runs = 0;
+    let tokensIn = 0;
+    let tokensOut = 0;
+    let costUsd = 0;
+    for (const r of recent) {
+      if (r._creationTime < cutoff) break;
+      runs += 1;
+      tokensIn += r.tokensIn;
+      tokensOut += r.tokensOut;
+      costUsd += r.costUsd;
+    }
+    return { runs, tokensIn, tokensOut, costUsd };
+  },
+});
+
 /** Sum of tokens (in+out) for an agent over the last 30 days — feeds the budget gate. */
 export const monthTokens = query({
   args: { agentId: v.id("agents"), adminToken: v.string() },

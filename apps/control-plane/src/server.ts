@@ -49,7 +49,82 @@ if (!ADMIN_TOKEN) {
 
 const app = new Hono();
 
+const DASHBOARD_HTML = readFileSync(join(here, "dashboard.html"), "utf8");
+
 app.get("/health", (c) => c.json({ ok: true }));
+app.get("/", (c) => c.html(DASHBOARD_HTML));
+
+// ---- Dashboard read/write API (server holds the admin token) ----
+
+app.get("/api/agents", async (c) => {
+  const agents = await convex.query(api.agents.list, { adminToken: ADMIN_TOKEN! });
+  const withStats = await Promise.all(
+    agents.map(async (a) => {
+      const stats = await convex.query(api.runs.statsByAgent, {
+        agentId: a._id,
+        adminToken: ADMIN_TOKEN!,
+      });
+      return {
+        id: a._id,
+        name: a.name,
+        slug: a.slug,
+        status: a.status,
+        model: a.model ?? null,
+        convexUrl: a.convexUrl ?? null,
+        stats,
+      };
+    }),
+  );
+  return c.json({ agents: withStats });
+});
+
+app.get("/api/agents/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN! });
+  if (!found?.agent) return c.json({ error: "not found" }, 404);
+  const runs = await convex.query(api.runs.listByAgent, {
+    agentId: found.agent._id,
+    adminToken: ADMIN_TOKEN!,
+  });
+  const stats = await convex.query(api.runs.statsByAgent, {
+    agentId: found.agent._id,
+    adminToken: ADMIN_TOKEN!,
+  });
+  return c.json({
+    agent: {
+      id: found.agent._id,
+      name: found.agent.name,
+      slug: found.agent.slug,
+      status: found.agent.status,
+      model: found.agent.model ?? null,
+      convexUrl: found.agent.convexUrl ?? null,
+    },
+    policy: found.policy,
+    stats,
+    runs,
+  });
+});
+
+app.post("/api/agents/:slug/policy", async (c) => {
+  const slug = c.req.param("slug");
+  const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN! });
+  if (!found?.agent) return c.json({ error: "not found" }, 404);
+  const b = await c.req.json<{
+    allowedTools: string[];
+    allowedDomains: string[];
+    perRunTokenCeiling: number;
+    monthlyTokenCap: number;
+  }>();
+  await convex.mutation(api.agents.setPolicy, {
+    adminToken: ADMIN_TOKEN!,
+    agentId: found.agent._id,
+    allowedTools: b.allowedTools,
+    allowedDomains: b.allowedDomains,
+    perRunTokenCeiling: b.perRunTokenCeiling,
+    monthlyTokenCap: b.monthlyTokenCap,
+  });
+  return c.json({ ok: true });
+});
 
 /** Admin gate for control-plane management endpoints (deploy, policy, etc.). */
 function isAdmin(c: { req: { header: (n: string) => string | undefined } }): boolean {
