@@ -24,7 +24,9 @@ export const convexProvisioner: ProvisionApi = {
         join(dir, "package.json"),
         JSON.stringify({ name: slug, version: "0.0.0", private: true, dependencies: { convex: "1.40.0" } }),
       );
-      await run("npm", ["install", "--no-audit", "--no-fund"], dir, 120_000);
+      // Prefer the local cache (convex is already in the workspace) and allow
+      // generous time — a cold install in a temp dir can be slow.
+      await run("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], dir, 300_000);
       await run(
         "npx",
         ["convex", "dev", "--once", "--configure", "new", "--project", slug, "--dev-deployment", "cloud"],
