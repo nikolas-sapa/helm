@@ -69,9 +69,14 @@ Open **http://127.0.0.1:8787/** to see the agent, its spend, run history, and ed
 npm test          # 39 unit tests across core / agent / runtime / cli
 ```
 
+## Execution modes
+
+- **Host (default):** `codex exec` runs on the host machine via the local Codex login. Fully verified.
+- **Sandbox (`HELM_EXECUTION=sandbox`):** each run executes inside an isolated Vercel Sandbox (`@vercel/sandbox`). The sandbox create→run→stop lifecycle is verified live; codex is invoked as argv (no shell). **Not yet end-to-end**: codex isn't pre-installed in the sandbox base image and in-sandbox execution requires an `OPENAI_API_KEY` (the local ChatGPT login can't transfer). Requiring that key fails loud.
+
 ## Known gaps (tracked, not hidden)
 
-- **Pricing is zeroed** in `packages/core/src/cost.ts` (`TODO(verify)`) — cost math is correct but `costUsd` reads $0 until real Codex/Anthropic prices are filled in. Deliberate: no billing numbers from memory.
-- **Execution runs `codex` on the host**, not yet inside an isolated Vercel Sandbox — fine for local MVP, required before multi-tenant hosting.
-- **Agent DB write auth**: provisioning returns the per-agent Convex URL but not yet a deploy key, so agents can't write to their DB until that's wired (see `spikes/FINDINGS.md`).
+- **Pricing:** verified for the default model `gpt-5.4-mini` ($0.75/$4.50 per 1M) and the Anthropic fallbacks (sourced 2026-06-15). `gpt-5-codex`/`gpt-5` were dropped — those exact IDs weren't on OpenAI's pricing page. `computeCost` takes the price table as an argument so the math is tested independently.
+- **Sandbox execution** is structurally complete but blocked end-to-end on an `OPENAI_API_KEY` + installing codex in the sandbox image (see Execution modes).
+- **Agent DB writes:** provisioning now generates a per-agent Convex deploy key (`convex deployment token create … --save-env`) and injects it as `CONVEX_DEPLOY_KEY` into the run. Whether that dev key grants the agent's Convex client runtime write access is unverified (blocked on the same `OPENAI_API_KEY` gap that prevents an end-to-end agent run).
 - Dashboard API is gated by the admin token (sent as a Bearer header; the page prompts for it). For production, swap the prompt for a real session/SSO login.
