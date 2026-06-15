@@ -73,6 +73,11 @@ export async function runCodexAgentInSandbox(opts: SandboxRunOptions): Promise<R
   }
 
   const model = opts.model ?? DEFAULT_MODEL;
+  // Defense-in-depth: model flows into a subprocess invocation; reject anything
+  // outside a safe identifier charset even though it is admin-set.
+  if (!/^[a-zA-Z0-9._-]+$/.test(model)) {
+    throw new Error(`[HELM] invalid model id: ${model}`);
+  }
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT;
   const startedAt = Date.now();
 
@@ -87,17 +92,21 @@ export async function runCodexAgentInSandbox(opts: SandboxRunOptions): Promise<R
       },
     });
 
-    // Write prompt to a temp file then pipe it into codex exec.
-    // codex exec reads from stdin when the last arg is "-".
-    await sandbox.writeFiles([{ path: "/vercel/sandbox/prompt.txt", content: opts.prompt }]);
-
+    // Invoke codex directly as argv (no shell) so the prompt and model are
+    // discrete arguments and cannot be shell-interpreted — closes command
+    // injection. The prompt is passed as codex exec's positional PROMPT arg.
+    //
     // UNVERIFIED: codex is not pre-installed in the Vercel Sandbox base image.
     // A production implementation would need to install it (npm i -g @openai/codex
     // or ship a bundle). This invocation is structurally correct but will fail
     // until codex is available in the sandbox environment.
-    const result = await sandbox.runCommand("sh", [
-      "-c",
-      `cat /vercel/sandbox/prompt.txt | codex exec --json --skip-git-repo-check -m ${model} -`,
+    const result = await sandbox.runCommand("codex", [
+      "exec",
+      "--json",
+      "--skip-git-repo-check",
+      "-m",
+      model,
+      opts.prompt,
     ]);
 
     const exitCode = result.exitCode;
