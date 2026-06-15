@@ -6,7 +6,15 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { ConvexHttpClient } from "convex/browser";
 import { hashBundle, evaluateBudget, type Policy } from "@helm/core";
-import { hashKey, verifyKey, redactInput, runCodexAgent, provisionWith } from "@helm/runtime";
+import {
+  hashKey,
+  verifyKey,
+  redactInput,
+  runCodexAgent,
+  runCodexAgentInSandbox,
+  isSandboxMode,
+  provisionWith,
+} from "@helm/runtime";
 import { api } from "../convex/_generated/api.js";
 import { convexProvisioner } from "./convexProvisioner.js";
 
@@ -175,6 +183,7 @@ app.post("/api/deploy", async (c) => {
     bundleHash,
     convexUrl: provisioned.url,
     convexProjectId: provisioned.projectId,
+    convexDeployKey: provisioned.adminKey || undefined,
   });
 
   return c.json({
@@ -233,7 +242,16 @@ app.post("/a/:slug/run", async (c) => {
     .json<{ input?: string }>()
     .catch((): { input?: string } => ({}));
   const input = parsed.input ?? "";
-  const result = await runCodexAgent({ prompt: input, model: agent.model });
+
+  // Build the env vars to inject into the execution environment so the agent
+  // code can connect to its per-agent Convex DB (AgentContext.convex).
+  const convexEnv: Record<string, string> = {};
+  if (agent.convexUrl) convexEnv.CONVEX_URL = agent.convexUrl;
+  if (agent.convexDeployKey) convexEnv.CONVEX_DEPLOY_KEY = agent.convexDeployKey;
+
+  const result = isSandboxMode()
+    ? await runCodexAgentInSandbox({ prompt: input, model: agent.model, env: convexEnv })
+    : await runCodexAgent({ prompt: input, model: agent.model, env: convexEnv });
 
   // Post-hoc per-run ceiling enforcement.
   const runTokens = result.usage.tokensIn + result.usage.tokensOut;

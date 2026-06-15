@@ -38,6 +38,7 @@ export const create = mutation({
     bundleHash: v.string(),
     convexUrl: v.optional(v.string()),
     convexProjectId: v.optional(v.string()),
+    convexDeployKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     requireAdmin(args.adminToken);
@@ -51,6 +52,7 @@ export const create = mutation({
       model: args.model,
       convexUrl: args.convexUrl,
       convexProjectId: args.convexProjectId,
+      convexDeployKey: args.convexDeployKey,
     });
     await ctx.db.insert("deployments", {
       agentId,

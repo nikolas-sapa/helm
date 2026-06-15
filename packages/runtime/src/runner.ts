@@ -9,6 +9,8 @@ export interface RunOptions {
   cwd?: string; // agent bundle dir
   timeoutMs?: number;
   prices?: PriceTable;
+  /** Extra env vars injected into the codex exec child process (e.g. CONVEX_DEPLOY_KEY). */
+  env?: Record<string, string>;
 }
 
 const DEFAULT_MODEL = "gpt-5.4-mini";
@@ -21,7 +23,7 @@ export async function runCodexAgent(opts: RunOptions): Promise<RunResult> {
 
   let jsonl: string;
   try {
-    jsonl = await execCodex(opts.prompt, model, opts.cwd, opts.timeoutMs ?? DEFAULT_TIMEOUT);
+    jsonl = await execCodex(opts.prompt, model, opts.cwd, opts.timeoutMs ?? DEFAULT_TIMEOUT, opts.env);
   } catch (e) {
     return assembleResult(
       {
@@ -60,12 +62,13 @@ function execCodex(
   model: string,
   cwd: string | undefined,
   timeoutMs: number,
+  extraEnv?: Record<string, string>,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "codex",
       ["exec", "--json", "--skip-git-repo-check", "-m", model, "-"],
-      { cwd, stdio: ["pipe", "pipe", "pipe"] },
+      { cwd, stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ...extraEnv } },
     );
     let stdout = "";
     let stderr = "";

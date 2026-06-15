@@ -12,6 +12,7 @@ export default defineSchema({
     model: v.optional(v.string()),
     convexProjectId: v.optional(v.string()),
     convexUrl: v.optional(v.string()),
+    convexDeployKey: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
 
   deployments: defineTable({
