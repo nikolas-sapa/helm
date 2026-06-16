@@ -136,6 +136,18 @@
         min-height: 300px; color: var(--faint); font-size: 13px; }
       .saved { color: var(--ok); font-size: 13px; margin-left: 12px; }
 
+      .login { position: fixed; inset: 0; background: var(--bg); display: none;
+        align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+      .login.show { display: flex; }
+      .login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column;
+        align-items: stretch; gap: 14px; }
+      .login-card .logo { justify-content: center; margin-bottom: 2px; }
+      .login-card h2 { text-align: center; font-size: 22px; letter-spacing: -0.02em; }
+      .login-sub { text-align: center; color: var(--muted); font-size: 13px; margin: -6px 0 6px; }
+      .login-card input { font-family: "Geist Mono"; text-align: center; }
+      .login-card button { width: 100%; padding: 11px; }
+      .login-err { color: var(--bad); font-size: 12.5px; text-align: center; min-height: 16px; }
+
       .panel-head { display: flex; align-items: center; justify-content: space-between;
         border-bottom: 1px solid var(--border); padding-right: 10px; }
       .panel-head > h2 { border-bottom: none; }
@@ -173,6 +185,21 @@
     </style>
   </head>
   <body>
+    <div class="login" id="login">
+      <form class="login-card" id="login-form">
+        <span class="logo" aria-hidden="true">
+          <svg width="26" height="23" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M37.527 0L75.054 65H0z" fill="currentColor" />
+          </svg>
+        </span>
+        <h2>Helm</h2>
+        <p class="login-sub">Enter your admin token to access the control plane.</p>
+        <input name="token" type="password" placeholder="hadm_…" autocomplete="off" autofocus />
+        <button type="submit">Continue</button>
+        <div class="login-err" id="login-err"></div>
+      </form>
+    </div>
+
     <header>
       <span class="logo" aria-hidden="true">
         <svg width="20" height="18" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -238,24 +265,38 @@ export default defineAgent({
         );
       let activeSlug = null;
 
-      // --- admin token: prompt once, store for the session, send as Bearer ---
-      function getToken() {
-        let t = sessionStorage.getItem("helm_admin");
-        if (!t) {
-          t = window.prompt("Helm admin token") || "";
-          if (t) sessionStorage.setItem("helm_admin", t);
-        }
-        return t;
+      // --- admin token via login screen; sent as Bearer ---
+      class Unauthorized extends Error {}
+      const loginEl = document.getElementById("login");
+      function showLogin(msg) {
+        document.getElementById("login-err").textContent = msg || "";
+        loginEl.classList.add("show");
+        const i = loginEl.querySelector('input[name="token"]');
+        i.value = "";
+        i.focus();
       }
+      function hideLogin() { loginEl.classList.remove("show"); }
+
       async function authedFetch(url, opts = {}) {
-        const headers = { ...(opts.headers || {}), authorization: "Bearer " + getToken() };
+        const token = sessionStorage.getItem("helm_admin") || "";
+        const headers = { ...(opts.headers || {}), authorization: "Bearer " + token };
         const res = await fetch(url, { ...opts, headers });
         if (res.status === 401) {
           sessionStorage.removeItem("helm_admin");
-          throw new Error("unauthorized — refresh and re-enter the admin token");
+          showLogin("Invalid or expired token.");
+          throw new Unauthorized("unauthorized");
         }
         return res;
       }
+
+      document.getElementById("login-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const t = e.target.elements["token"].value.trim();
+        if (!t) return;
+        sessionStorage.setItem("helm_admin", t);
+        hideLogin();
+        loadAgents().catch((err) => { if (!(err instanceof Unauthorized)) console.error(err); });
+      });
 
       async function loadAgents() {
         const { agents } = await (await authedFetch("/api/agents")).json();
@@ -438,7 +479,11 @@ export default defineAgent({
         }
       });
 
-      loadAgents();
+      if (sessionStorage.getItem("helm_admin")) {
+        loadAgents().catch((err) => { if (!(err instanceof Unauthorized)) console.error(err); });
+      } else {
+        showLogin();
+      }
     </script>
   </body>
 </html>
