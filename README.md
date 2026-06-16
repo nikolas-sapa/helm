@@ -90,7 +90,7 @@ A deployed agent's own `agent.ts` runs in an isolated **child process** (temp di
 
 **LLM is parent-proxied:** `ctx.complete` sends the prompt to the parent over IPC; the parent holds the key, makes the call, and meters tokens. So tenant code can't read the LLM key or forge its token usage to evade budget caps (verified live).
 
-**Trust model — important:** safe today because `/api/deploy` is **admin-gated**, so the deployer *is* the operator (single-trust). The remaining requirement before **untrusted multi-tenant** is real OS isolation — a container (`--network none`, read-only fs, dropped caps) or the Vercel Sandbox path — since a child process still shares the host's fs/network and `HOME` exposes operator CLI creds. Tracked in `bundleRunner.ts`.
+**Trust model — enforced, not just documented:** plain child-process execution refuses to run unless `HELM_TRUST_DEPLOYERS=true` is explicitly set (trusted single-org — deploy is admin-gated, so deployer = operator). Without that flag, bundle runs fail closed. For **untrusted multi-tenant**, set `HELM_EXECUTION=docker` to require an OS-isolated backend (container: `--network none`, read-only fs, dropped caps). That container backend is a **deployment prerequisite and is not built into this version** — a child process still shares the host fs/network and `HOME`. The boundary is enforced in code (`resolveBundleExecution`); the backend is the remaining infra build.
 
 ## Known gaps (tracked, not hidden)
 

@@ -15,6 +15,7 @@ import {
   provisionWith,
   runBundle,
   hasRunnableBundle,
+  resolveBundleExecution,
 } from "@helm/runtime";
 import { PRICES } from "@helm/core";
 import { api } from "../convex/_generated/api.js";
@@ -55,6 +56,26 @@ const BASE = process.env.HELM_BASE_URL ?? `http://localhost:${PORT}`;
 const ADMIN_TOKEN = loadEnvVar("HELM_ADMIN_TOKEN");
 if (!ADMIN_TOKEN) {
   throw new Error("HELM_ADMIN_TOKEN not set (process.env or .env.local) — refusing to start");
+}
+
+// Hoist bundle-execution policy vars from .env.local into process.env so
+// resolveBundleExecution sees them.
+for (const k of ["HELM_TRUST_DEPLOYERS", "HELM_EXECUTION"]) {
+  const v = loadEnvVar(k);
+  if (v) process.env[k] = v;
+}
+
+/** Build a failed RunResult (used when bundle execution is refused by policy). */
+function failedResult(model: string, error: string) {
+  return {
+    status: "failed" as const,
+    output: null,
+    usage: { tokensIn: 0, tokensOut: 0, model },
+    costUsd: 0,
+    toolCalls: [] as { tool: string; allowed: boolean }[],
+    durationMs: 0,
+    error,
+  };
 }
 
 const app = new Hono();
@@ -274,16 +295,31 @@ app.post("/a/:slug/run", async (c) => {
   // HELM_LLM_PROVIDER (anthropic/openai/openrouter-via-baseUrl) + key to switch.
   const provider = providerFromEnv(agent.model ?? undefined);
   const files = found.files ?? [];
-  const result = hasRunnableBundle(files)
-    ? await runBundle({
+  let result;
+  if (hasRunnableBundle(files)) {
+    const decision = resolveBundleExecution();
+    if (!decision.allowed) {
+      // Refuse to run deployer code unsandboxed unless explicitly trusted.
+      result = failedResult(provider.model ?? "unknown", decision.reason!);
+    } else if (decision.mode === "docker") {
+      result = failedResult(
+        provider.model ?? "unknown",
+        "HELM_EXECUTION=docker isolation backend is not built in this version; " +
+          "use HELM_TRUST_DEPLOYERS=true for trusted single-org execution.",
+      );
+    } else {
+      result = await runBundle({
         files,
         input,
         policy,
         provider,
         convex: { url: agent.convexUrl ?? "", adminKey: agent.convexDeployKey ?? "" },
         prices: PRICES,
-      })
-    : await runWithProvider(provider, { prompt: input, env: convexEnv });
+      });
+    }
+  } else {
+    result = await runWithProvider(provider, { prompt: input, env: convexEnv });
+  }
 
   // Post-hoc per-run ceiling enforcement.
   const runTokens = result.usage.tokensIn + result.usage.tokensOut;

@@ -6,3 +6,4 @@ export * from "./runner.js";
 export * from "./sandboxRunner.js";
 export * from "./providers.js";
 export * from "./bundleRunner.js";
+export * from "./execMode.js";
