@@ -88,7 +88,9 @@ npm test          # 39 unit tests across core / agent / runtime / cli
 
 A deployed agent's own `agent.ts` runs in an isolated **child process** (temp dir, restricted env, hard timeout, process-group kill, stdout cap). It gets `ctx.complete(prompt)` (metered model call), domain-gated `ctx.fetch`, and its `ctx.convex` creds. Verified live: a deployed agent's own `run()` executes and is metered.
 
-**Trust model — important:** this is safe today because `/api/deploy` is **admin-gated**, so the deployer *is* the operator (single-trust). It is **not yet safe for untrusted multi-tenant deployers**. Before that, two things are required (tracked in `bundleRunner.ts`): (1) real isolation — a container (`--network none`, read-only fs, dropped caps) or the Vercel Sandbox path — since a child process shares the host's fs/network and the `HOME` env; (2) **parent-proxied LLM metering** — today token usage is self-reported by the child, so a malicious bundle could under-report and evade budget caps. The operator LLM API key is stripped from the child env (keyless Codex unaffected); BYO-key model calls from inside a bundle need the parent proxy.
+**LLM is parent-proxied:** `ctx.complete` sends the prompt to the parent over IPC; the parent holds the key, makes the call, and meters tokens. So tenant code can't read the LLM key or forge its token usage to evade budget caps (verified live).
+
+**Trust model — important:** safe today because `/api/deploy` is **admin-gated**, so the deployer *is* the operator (single-trust). The remaining requirement before **untrusted multi-tenant** is real OS isolation — a container (`--network none`, read-only fs, dropped caps) or the Vercel Sandbox path — since a child process still shares the host's fs/network and `HOME` exposes operator CLI creds. Tracked in `bundleRunner.ts`.
 
 ## Known gaps (tracked, not hidden)
 

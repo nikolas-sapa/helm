@@ -7,13 +7,14 @@
  * env (no server admin token; provider apiKey stripped), process-group kill on
  * timeout, and a stdout cap.
  *
- * NOT YET safe for UNTRUSTED multi-tenant deployers. Before that, two things are
- * required and tracked: (1) real isolation (container with --network none,
- * read-only fs, dropped caps — or the Vercel Sandbox path), and (2) a
- * parent-proxied LLM so token usage is metered by the parent, not self-reported
- * by tenant code (today a malicious bundle could under-report usage and evade
- * budget caps). The HOME env also exposes operator CLI creds to the child, which
- * containerization resolves.
+ * LLM calls are PARENT-PROXIED over IPC: the child asks the parent to complete a
+ * prompt; the parent holds the key, makes the call, and meters tokens. So tenant
+ * code can neither read the LLM key nor forge token usage to evade budget caps.
+ *
+ * NOT YET safe for UNTRUSTED multi-tenant deployers. The remaining requirement is
+ * real OS isolation (container with --network none, read-only fs, dropped caps —
+ * or the Vercel Sandbox path): a child process still shares the host fs/network,
+ * and HOME exposes operator CLI creds. Containerization resolves these.
  */
 import { spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
@@ -22,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import type { PriceTable, Policy, RunResult, ToolCall, Usage } from "@helm/core";
 import type { BundleFile } from "@helm/core";
 import { assembleResult } from "./capture.js";
-import type { ProviderConfig } from "./providers.js";
+import { runWithProvider, type ProviderConfig } from "./providers.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // repo root = packages/runtime/src -> ../../.. ; the temp run dir lives under it
@@ -48,9 +49,6 @@ export function hasRunnableBundle(files: BundleFile[]): boolean {
 interface HarnessResult {
   __helm: true;
   output?: unknown;
-  tokensIn?: number;
-  tokensOut?: number;
-  model?: string;
   toolCalls?: ToolCall[];
   error?: string;
 }
@@ -80,19 +78,14 @@ export async function runBundle(opts: BundleRunOptions): Promise<RunResult> {
     }
     writeFileSync(join(dir, "__harness.mts"), HARNESS);
 
-    const usage: Usage = { tokensIn: 0, tokensOut: 0, model };
-    const out = await execHarness(dir, opts, model, opts.timeoutMs ?? 120_000);
-
-    usage.tokensIn = out.tokensIn ?? 0;
-    usage.tokensOut = out.tokensOut ?? 0;
-    usage.model = out.model ?? model;
+    const { result, usage } = await execHarness(dir, opts, model, opts.timeoutMs ?? 120_000);
     return assembleResult(
       {
-        output: out.output ?? null,
-        usage,
-        toolCalls: out.toolCalls ?? [],
+        output: result.output ?? null,
+        usage, // authoritative — metered by the PARENT over IPC, not self-reported
+        toolCalls: result.toolCalls ?? [],
         durationMs: Date.now() - startedAt,
-        error: out.error,
+        error: result.error,
       },
       opts.prices,
     );
@@ -106,14 +99,13 @@ function execHarness(
   opts: BundleRunOptions,
   model: string,
   timeoutMs: number,
-): Promise<HarnessResult> {
-  return new Promise((resolve) => {
-    // Restricted env: never leak the server's secrets to user code. Only what
-    // the agent legitimately needs — PATH/HOME (for the codex CLI + module
-    // resolution) and the agent's own scoped config. The provider's apiKey is
-    // STRIPPED so tenant code can't read the operator's LLM key from env; the
-    // keyless codex path works regardless. (BYO-key model calls from inside a
-    // bundle need the parent-proxy LLM design — tracked, see README.)
+): Promise<{ result: HarnessResult; usage: Usage }> {
+  return new Promise((resolveOuter) => {
+    // Restricted env: never leak the server's secrets to user code. The provider
+    // apiKey is NOT passed — the child never makes LLM calls itself; it asks the
+    // parent over IPC, and the parent (which holds the key) makes the call and
+    // meters tokens authoritatively. So a malicious bundle cannot read the key
+    // nor forge its token usage to evade budget caps.
     const { apiKey: _omit, ...providerSafe } = opts.provider;
     const childEnv: Record<string, string> = {
       PATH: process.env.PATH ?? "",
@@ -125,12 +117,17 @@ function execHarness(
       HELM_CONVEX_KEY: opts.convex.adminKey,
     };
 
+    // Authoritative usage, accumulated PARENT-side across the bundle's model calls.
+    const usage: Usage = { tokensIn: 0, tokensOut: 0, model };
     const MAX_OUT = 1024 * 1024; // 1 MB cap to protect the parent from OOM
-    const child = spawn("npx", ["tsx", "__harness.mts"], {
+
+    // node --import tsx makes node the direct child so the IPC channel (fd 'ipc')
+    // is reliably available to the harness via process.send/on('message').
+    const child = spawn("node", ["--import", "tsx", "__harness.mts"], {
       cwd: dir,
       env: childEnv,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: true, // own process group so we can kill grandchildren
+      stdio: ["ignore", "pipe", "pipe", "ipc"],
+      detached: true,
     });
     let stdout = "";
     let stderr = "";
@@ -143,58 +140,80 @@ function execHarness(
     };
     const timer = setTimeout(() => {
       killGroup();
-      resolve({ __helm: true, error: `bundle timed out after ${timeoutMs}ms`, model });
+      resolveOuter({ result: { __helm: true, error: `bundle timed out after ${timeoutMs}ms` }, usage });
     }, timeoutMs);
 
-    child.stdout.on("data", (d) => {
-      if (stdout.length < MAX_OUT) stdout += d.toString();
-      else killGroup(); // runaway output — terminate
+    // LLM proxy: the child requests a completion; the parent runs the provider
+    // (with the real key) and meters the tokens.
+    child.on("message", async (msg: unknown) => {
+      const m = msg as { t?: string; id?: number; prompt?: string };
+      if (m?.t !== "complete" || typeof m.id !== "number") return;
+      try {
+        const r = await runWithProvider(opts.provider, { prompt: String(m.prompt ?? "") });
+        usage.tokensIn += r.usage.tokensIn;
+        usage.tokensOut += r.usage.tokensOut;
+        usage.model = r.usage.model || usage.model;
+        const output = typeof r.output === "string" ? r.output : JSON.stringify(r.output ?? "");
+        child.send({ t: "result", id: m.id, ok: r.status !== "failed", output, error: r.error });
+      } catch (e) {
+        child.send({ t: "result", id: m.id, ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
     });
-    child.stderr.on("data", (d) => {
+
+    child.stdout!.on("data", (d) => {
+      if (stdout.length < MAX_OUT) stdout += d.toString();
+      else killGroup();
+    });
+    child.stderr!.on("data", (d) => {
       if (stderr.length < MAX_OUT) stderr += d.toString();
     });
     child.on("error", (e) => {
       clearTimeout(timer);
-      resolve({ __helm: true, error: e.message, model });
+      resolveOuter({ result: { __helm: true, error: e.message }, usage });
     });
     child.on("close", () => {
       clearTimeout(timer);
-      // The harness prints exactly one JSON line tagged __helm.
-      const line = stdout
-        .split("\n")
-        .reverse()
-        .find((l) => l.includes('"__helm"'));
+      const line = stdout.split("\n").reverse().find((l) => l.includes('"__helm"'));
       if (!line) {
-        resolve({ __helm: true, error: `bundle produced no result: ${stderr.slice(0, 300)}`, model });
+        resolveOuter({ result: { __helm: true, error: `bundle produced no result: ${stderr.slice(0, 300)}` }, usage });
         return;
       }
       try {
-        resolve(JSON.parse(line) as HarnessResult);
+        resolveOuter({ result: JSON.parse(line) as HarnessResult, usage });
       } catch {
-        resolve({ __helm: true, error: "could not parse bundle result", model });
+        resolveOuter({ result: { __helm: true, error: "could not parse bundle result" }, usage });
       }
     });
   });
 }
 
-// Child-process harness (TS, ESM). Loads the user's agent, builds a gated +
-// metered AgentContext, runs it, and prints a single JSON result line.
+// Child-process harness (TS, ESM). Loads the user's agent and builds a gated
+// AgentContext. ctx.complete is proxied to the PARENT over IPC — the child never
+// holds the LLM key and never reports its own token counts.
 const HARNESS = `import { makeFetchTool } from "@helm/agent";
-import { runWithProvider } from "@helm/runtime";
 
 const input = JSON.parse(process.env.HELM_INPUT || "null");
 const policy = JSON.parse(process.env.HELM_POLICY || "{}");
 const provider = JSON.parse(process.env.HELM_PROVIDER || "{}");
 const convex = { url: process.env.HELM_CONVEX_URL || "", adminKey: process.env.HELM_CONVEX_KEY || "" };
 
-let tokensIn = 0, tokensOut = 0, model = provider.model || "unknown";
 const toolCalls: { tool: string; allowed: boolean }[] = [];
 
+let __reqId = 0;
+const __pending = new Map<number, { resolve: (s: string) => void; reject: (e: Error) => void }>();
+process.on("message", (m: any) => {
+  if (m && m.t === "result" && __pending.has(m.id)) {
+    const p = __pending.get(m.id)!; __pending.delete(m.id);
+    if (m.ok) p.resolve(m.output); else p.reject(new Error(m.error || "model call failed"));
+  }
+});
 async function complete(prompt: string): Promise<string> {
-  const r = await runWithProvider(provider, { prompt });
-  tokensIn += r.usage.tokensIn; tokensOut += r.usage.tokensOut; model = r.usage.model || model;
-  if (r.status === "failed") throw new Error(r.error || "model call failed");
-  return typeof r.output === "string" ? r.output : JSON.stringify(r.output);
+  if (typeof process.send !== "function") throw new Error("no LLM channel available");
+  const id = ++__reqId;
+  return new Promise<string>((resolve, reject) => {
+    __pending.set(id, { resolve, reject });
+    process.send!({ t: "complete", id, prompt: String(prompt) });
+  });
 }
 
 const fetchTool = makeFetchTool(policy, async (url: string, init?: RequestInit) => {
@@ -203,7 +222,12 @@ const fetchTool = makeFetchTool(policy, async (url: string, init?: RequestInit) 
 });
 
 function emit(o: Record<string, unknown>) {
-  process.stdout.write(JSON.stringify({ __helm: true, tokensIn, tokensOut, model, toolCalls, ...o }) + "\\n");
+  // Write the result, then tear down the IPC channel and exit — otherwise the
+  // open IPC fd keeps the child's event loop alive and it hangs until timeout.
+  process.stdout.write(JSON.stringify({ __helm: true, toolCalls, ...o }) + "\\n", () => {
+    try { process.disconnect && process.disconnect(); } catch {}
+    process.exit(0);
+  });
 }
 
 try {
