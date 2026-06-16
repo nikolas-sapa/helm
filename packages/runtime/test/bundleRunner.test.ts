@@ -1,5 +1,32 @@
 import { describe, it, expect } from "vitest";
-import { hasRunnableBundle } from "../src/bundleRunner.js";
+import { hasRunnableBundle, runBundle } from "../src/bundleRunner.js";
+
+describe("runBundle path containment", () => {
+  const base = {
+    input: null,
+    policy: {
+      agentId: "a",
+      allowedTools: [],
+      allowedDomains: [],
+      perRunTokenCeiling: 1,
+      monthlyTokenCap: 1,
+    },
+    provider: { provider: "codex" as const },
+    convex: { url: "", adminKey: "" },
+  };
+
+  it("rejects a bundle path that escapes the run dir (..)", async () => {
+    await expect(
+      runBundle({ ...base, files: [{ path: "../../evil.ts", content: "x" }] }),
+    ).rejects.toThrow(/escapes run dir|bad bundle path/i);
+  });
+
+  it("rejects an absolute bundle path", async () => {
+    await expect(
+      runBundle({ ...base, files: [{ path: "/etc/evil", content: "x" }] }),
+    ).rejects.toThrow(/bad bundle path|escapes/i);
+  });
+});
 
 describe("hasRunnableBundle", () => {
   it("detects an agent.ts with a default export", () => {

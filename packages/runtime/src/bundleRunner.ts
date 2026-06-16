@@ -1,6 +1,23 @@
+/**
+ * Bundle execution — runs a deployed agent's own `agent.ts` in a child process.
+ *
+ * SECURITY POSTURE: this is a child process, not a container. It is safe for the
+ * CURRENT model where deploy is admin-gated, so the deployer IS the operator
+ * (single-trust). Hardening applied: path-traversal containment, secret-stripped
+ * env (no server admin token; provider apiKey stripped), process-group kill on
+ * timeout, and a stdout cap.
+ *
+ * NOT YET safe for UNTRUSTED multi-tenant deployers. Before that, two things are
+ * required and tracked: (1) real isolation (container with --network none,
+ * read-only fs, dropped caps — or the Vercel Sandbox path), and (2) a
+ * parent-proxied LLM so token usage is metered by the parent, not self-reported
+ * by tenant code (today a malicious bundle could under-report usage and evade
+ * budget caps). The HOME env also exposes operator CLI creds to the child, which
+ * containerization resolves.
+ */
 import { spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { PriceTable, Policy, RunResult, ToolCall, Usage } from "@helm/core";
 import type { BundleFile } from "@helm/core";
@@ -47,8 +64,17 @@ export async function runBundle(opts: BundleRunOptions): Promise<RunResult> {
   const dir = mkdtempSync(join(runsDir, "run-"));
 
   try {
+    const safeRoot = resolve(dir);
     for (const f of opts.files) {
-      const dest = join(dir, f.path);
+      // Containment: reject absolute paths, null bytes, and any `..` escape.
+      if (isAbsolute(f.path) || f.path.includes("\0")) {
+        throw new Error(`bad bundle path: ${f.path}`);
+      }
+      const dest = resolve(safeRoot, f.path);
+      const rel = relative(safeRoot, dest);
+      if (rel.startsWith("..") || isAbsolute(rel)) {
+        throw new Error(`bundle path escapes run dir: ${f.path}`);
+      }
       mkdirSync(dirname(dest), { recursive: true });
       writeFileSync(dest, f.content);
     }
@@ -84,31 +110,49 @@ function execHarness(
   return new Promise((resolve) => {
     // Restricted env: never leak the server's secrets to user code. Only what
     // the agent legitimately needs — PATH/HOME (for the codex CLI + module
-    // resolution) and the agent's own scoped config.
+    // resolution) and the agent's own scoped config. The provider's apiKey is
+    // STRIPPED so tenant code can't read the operator's LLM key from env; the
+    // keyless codex path works regardless. (BYO-key model calls from inside a
+    // bundle need the parent-proxy LLM design — tracked, see README.)
+    const { apiKey: _omit, ...providerSafe } = opts.provider;
     const childEnv: Record<string, string> = {
       PATH: process.env.PATH ?? "",
       HOME: process.env.HOME ?? "",
       HELM_INPUT: JSON.stringify(opts.input ?? null),
       HELM_POLICY: JSON.stringify(opts.policy),
-      HELM_PROVIDER: JSON.stringify(opts.provider),
+      HELM_PROVIDER: JSON.stringify(providerSafe),
       HELM_CONVEX_URL: opts.convex.url,
       HELM_CONVEX_KEY: opts.convex.adminKey,
     };
 
+    const MAX_OUT = 1024 * 1024; // 1 MB cap to protect the parent from OOM
     const child = spawn("npx", ["tsx", "__harness.mts"], {
       cwd: dir,
       env: childEnv,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true, // own process group so we can kill grandchildren
     });
     let stdout = "";
     let stderr = "";
+    const killGroup = () => {
+      try {
+        if (child.pid) process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    };
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
+      killGroup();
       resolve({ __helm: true, error: `bundle timed out after ${timeoutMs}ms`, model });
     }, timeoutMs);
 
-    child.stdout.on("data", (d) => (stdout += d.toString()));
-    child.stderr.on("data", (d) => (stderr += d.toString()));
+    child.stdout.on("data", (d) => {
+      if (stdout.length < MAX_OUT) stdout += d.toString();
+      else killGroup(); // runaway output — terminate
+    });
+    child.stderr.on("data", (d) => {
+      if (stderr.length < MAX_OUT) stderr += d.toString();
+    });
     child.on("error", (e) => {
       clearTimeout(timer);
       resolve({ __helm: true, error: e.message, model });

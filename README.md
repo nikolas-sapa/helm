@@ -84,6 +84,12 @@ npm test          # 39 unit tests across core / agent / runtime / cli
 - **Host (default):** `codex exec` runs on the host machine via the local Codex login. Fully verified.
 - **Sandbox (`HELM_EXECUTION=sandbox`):** each run executes inside an isolated Vercel Sandbox (`@vercel/sandbox`). Verified end-to-end on 2026-06-16: the VM spins up (Vercel OIDC), codex installs, and `codex exec` runs (argv, no shell). **Finding:** the Codex CLI login (`~/.codex/auth.json`) copied into the sandbox is rejected by OpenAI with **401** — it's session/device-bound and cannot be transplanted. So sandbox execution needs a real `OPENAI_API_KEY`, or — recommended — use the **provider layer** with a BYO API key (`HELM_LLM_PROVIDER=anthropic|openai`), which runs fine in the sandbox. Codex-CLI-in-sandbox is not a supported hosted path; host mode (the default) uses the local Codex login and is fully verified.
 
+## Bundle execution & its trust model
+
+A deployed agent's own `agent.ts` runs in an isolated **child process** (temp dir, restricted env, hard timeout, process-group kill, stdout cap). It gets `ctx.complete(prompt)` (metered model call), domain-gated `ctx.fetch`, and its `ctx.convex` creds. Verified live: a deployed agent's own `run()` executes and is metered.
+
+**Trust model — important:** this is safe today because `/api/deploy` is **admin-gated**, so the deployer *is* the operator (single-trust). It is **not yet safe for untrusted multi-tenant deployers**. Before that, two things are required (tracked in `bundleRunner.ts`): (1) real isolation — a container (`--network none`, read-only fs, dropped caps) or the Vercel Sandbox path — since a child process shares the host's fs/network and the `HOME` env; (2) **parent-proxied LLM metering** — today token usage is self-reported by the child, so a malicious bundle could under-report and evade budget caps. The operator LLM API key is stripped from the child env (keyless Codex unaffected); BYO-key model calls from inside a bundle need the parent proxy.
+
 ## Known gaps (tracked, not hidden)
 
 - **Pricing:** verified for the default model `gpt-5.4-mini` ($0.75/$4.50 per 1M) and the Anthropic fallbacks (sourced 2026-06-15). `gpt-5-codex`/`gpt-5` were dropped — those exact IDs weren't on OpenAI's pricing page. `computeCost` takes the price table as an argument so the math is tested independently.
