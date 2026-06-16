@@ -13,7 +13,10 @@ import {
   runWithProvider,
   providerFromEnv,
   provisionWith,
+  runBundle,
+  hasRunnableBundle,
 } from "@helm/runtime";
+import { PRICES } from "@helm/core";
 import { api } from "../convex/_generated/api.js";
 import { convexProvisioner } from "./convexProvisioner.js";
 
@@ -270,7 +273,17 @@ app.post("/a/:slug/run", async (c) => {
   // Resolve the LLM backend: defaults to keyless Codex CLI; operators can set
   // HELM_LLM_PROVIDER (anthropic/openai/openrouter-via-baseUrl) + key to switch.
   const provider = providerFromEnv(agent.model ?? undefined);
-  const result = await runWithProvider(provider, { prompt: input, env: convexEnv });
+  const files = found.files ?? [];
+  const result = hasRunnableBundle(files)
+    ? await runBundle({
+        files,
+        input,
+        policy,
+        provider,
+        convex: { url: agent.convexUrl ?? "", adminKey: agent.convexDeployKey ?? "" },
+        prices: PRICES,
+      })
+    : await runWithProvider(provider, { prompt: input, env: convexEnv });
 
   // Post-hoc per-run ceiling enforcement.
   const runTokens = result.usage.tokensIn + result.usage.tokensOut;

@@ -16,10 +16,18 @@ const SECRET_RES: RegExp[] = [
  * avoid storing recognizable credentials. Best-effort only — callers must not
  * treat this as a guarantee that all secrets are removed.
  */
-export function redactInput(input: string): string {
-  let out = input;
+export function redactInput(input: unknown): string {
+  let out = typeof input === "string" ? input : safeStringify(input);
   for (const re of SECRET_RES) out = out.replace(re, "[redacted]");
   return out.slice(0, 200);
+}
+
+function safeStringify(v: unknown): string {
+  try {
+    return JSON.stringify(v) ?? String(v);
+  } catch {
+    return String(v);
+  }
 }
 
 export interface SandboxOutcome {

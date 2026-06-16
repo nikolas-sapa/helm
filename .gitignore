@@ -13,3 +13,4 @@ apps/control-plane/convex/_generated/
 .vercel
 .vercel.env
 *.env
+.helm-runs/

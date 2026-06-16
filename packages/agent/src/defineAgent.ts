@@ -21,6 +21,8 @@ export interface AgentContext {
   fetch: FetchFn; // domain-gated
   convex: { url: string; adminKey: string };
   llm: LlmConfig;
+  /** Call the configured model. Token usage is metered automatically by Helm. */
+  complete: (prompt: string) => Promise<string>;
 }
 
 export interface AgentDefinition<I = unknown, O = unknown> {
