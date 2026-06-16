@@ -144,6 +144,23 @@ app.post("/api/agents/:slug/policy", async (c) => {
   return c.json({ ok: true });
 });
 
+app.post("/api/agents/:slug/status", async (c) => {
+  if (!isAdmin(c)) return c.json({ error: "unauthorized" }, 401);
+  const slug = c.req.param("slug");
+  const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN! });
+  if (!found?.agent) return c.json({ error: "not found" }, 404);
+  const { status } = await c.req.json<{ status: string }>();
+  if (status !== "active" && status !== "disabled") {
+    return c.json({ error: "status must be active or disabled" }, 400);
+  }
+  await convex.mutation(api.agents.setStatus, {
+    adminToken: ADMIN_TOKEN!,
+    agentId: found.agent._id,
+    status,
+  });
+  return c.json({ ok: true, status });
+});
+
 /** Deploy: register an agent, mint a key, create default policy + deployment. */
 app.post("/api/deploy", async (c) => {
   if (!isAdmin(c)) return c.json({ error: "unauthorized" }, 401);

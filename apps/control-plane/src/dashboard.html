@@ -304,7 +304,13 @@ export default defineAgent({
 
         document.getElementById("detail").innerHTML = `
           <div class="detail-head">
-            <h2>${esc(d.agent.name)}</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <h2>${esc(d.agent.name)}</h2>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="badge ${d.agent.status === "active" ? "ok" : "blocked"}">${esc(d.agent.status)}</span>
+                <button class="btn-ghost" id="toggle-status" type="button">${d.agent.status === "active" ? "Disable" : "Enable"}</button>
+              </div>
+            </div>
             <div class="meta">
               <span>endpoint <b>/a/${esc(d.agent.slug)}/run</b></span>
               <span>model <b>${esc(d.agent.model ?? "default")}</b></span>
@@ -340,6 +346,19 @@ export default defineAgent({
               <span class="saved" id="saved" style="display:none">Saved</span>
             </form>
           </div>`;
+
+        document.getElementById("toggle-status").addEventListener("click", async (e) => {
+          const next = d.agent.status === "active" ? "disabled" : "active";
+          e.target.disabled = true;
+          e.target.textContent = "…";
+          await authedFetch("/api/agents/" + encodeURIComponent(slug) + "/status", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ status: next }),
+          });
+          await loadDetail(slug);
+          loadAgents();
+        });
 
         document.getElementById("policy-form").addEventListener("submit", async (e) => {
           e.preventDefault();

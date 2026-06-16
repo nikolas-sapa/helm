@@ -71,6 +71,17 @@ export const create = mutation({
   },
 });
 
+export const setStatus = mutation({
+  args: { adminToken: v.string(), agentId: v.id("agents"), status: v.string() },
+  handler: async (ctx, { adminToken, agentId, status }) => {
+    requireAdmin(adminToken);
+    if (status !== "active" && status !== "disabled") {
+      throw new Error("status must be 'active' or 'disabled'");
+    }
+    await ctx.db.patch(agentId, { status });
+  },
+});
+
 export const setPolicy = mutation({
   args: {
     adminToken: v.string(),
