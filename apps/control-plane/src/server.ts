@@ -119,6 +119,7 @@ app.get("/api/agents/:slug", async (c) => {
     policy: found.policy,
     stats,
     runs,
+    files: found.files ?? [],
   });
 });
 
@@ -197,6 +198,7 @@ app.post("/api/deploy", async (c) => {
     keyHash: hashKey(key),
     model: body.model,
     bundleHash,
+    files: body.files,
     convexUrl: provisioned.url,
     convexProjectId: provisioned.projectId,
     convexDeployKey: provisioned.adminKey || undefined,

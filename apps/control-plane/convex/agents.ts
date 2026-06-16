@@ -23,7 +23,12 @@ export const getBySlug = query({
       .query("policies")
       .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
       .unique();
-    return { agent, policy };
+    const deployment = await ctx.db
+      .query("deployments")
+      .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+      .order("desc")
+      .first();
+    return { agent, policy, files: deployment?.files ?? [] };
   },
 });
 
@@ -36,6 +41,7 @@ export const create = mutation({
     keyHash: v.string(),
     model: v.optional(v.string()),
     bundleHash: v.string(),
+    files: v.optional(v.array(v.object({ path: v.string(), content: v.string() }))),
     convexUrl: v.optional(v.string()),
     convexProjectId: v.optional(v.string()),
     convexDeployKey: v.optional(v.string()),
@@ -57,6 +63,7 @@ export const create = mutation({
     await ctx.db.insert("deployments", {
       agentId,
       bundleHash: args.bundleHash,
+      files: args.files,
       active: true,
     });
     // Sensible default policy: locked-down tools, generous budget.

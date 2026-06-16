@@ -18,6 +18,7 @@ export default defineSchema({
   deployments: defineTable({
     agentId: v.id("agents"),
     bundleHash: v.string(),
+    files: v.optional(v.array(v.object({ path: v.string(), content: v.string() }))),
     active: v.boolean(),
   }).index("by_agent", ["agentId"]),
 

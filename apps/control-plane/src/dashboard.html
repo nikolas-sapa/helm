@@ -182,6 +182,12 @@
       .result .val { font-family: "Geist Mono"; font-size: 12px; word-break: break-all;
         color: var(--text); margin-bottom: 12px; }
       .result .warn { color: var(--warn); font-size: 12px; }
+
+      .file-path { color: var(--muted); font-size: 11px; font-family: "Geist Mono";
+        margin-bottom: 6px; }
+      pre.src { margin: 0 0 14px; background: var(--bg); border: 1px solid var(--border);
+        border-radius: var(--r-sm); padding: 12px 14px; overflow-x: auto;
+        font-family: "Geist Mono"; font-size: 12px; line-height: 1.55; color: var(--text); }
     </style>
   </head>
   <body>
@@ -326,6 +332,11 @@ export default defineAgent({
         );
         const d = await (await authedFetch("/api/agents/" + encodeURIComponent(slug))).json();
         const p = d.policy || { allowedTools: [], allowedDomains: [], perRunTokenCeiling: 0, monthlyTokenCap: 0 };
+        const sourceHtml = (d.files && d.files.length)
+          ? d.files.map((file) =>
+              `<div class="file-path">${esc(file.path)}</div><pre class="src">${esc(file.content)}</pre>`,
+            ).join("")
+          : '<div style="color:var(--faint);font-size:13px">No source captured for this agent.</div>';
         // status drives a CSS class — whitelist it so it can never inject markup.
         const statusClass = (s) =>
           ["ok", "failed", "blocked", "budget_exceeded"].includes(s) ? s : "";
@@ -369,6 +380,10 @@ export default defineAgent({
               <thead><tr><th>status</th><th>tokens</th><th>cost</th><th>duration</th><th>input</th></tr></thead>
               <tbody>${runRows}</tbody>
             </table>
+          </div>
+          <div class="section" style="border-top:1px solid var(--border)">
+            <h3>Source — what this agent runs</h3>
+            ${sourceHtml}
           </div>
           <div class="section" style="border-top:1px solid var(--border)">
             <h3>Policy — what IT allows</h3>
