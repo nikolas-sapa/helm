@@ -135,6 +135,41 @@
       .placeholder { display: flex; align-items: center; justify-content: center;
         min-height: 300px; color: var(--faint); font-size: 13px; }
       .saved { color: var(--ok); font-size: 13px; margin-left: 12px; }
+
+      .panel-head { display: flex; align-items: center; justify-content: space-between;
+        border-bottom: 1px solid var(--border); padding-right: 10px; }
+      .panel-head > h2 { border-bottom: none; }
+      .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border-strong);
+        padding: 5px 11px; font-size: 12.5px; border-radius: var(--r-sm); }
+      .btn-ghost:hover { background: var(--surface-2); opacity: 1; }
+
+      .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6);
+        backdrop-filter: blur(2px); display: none; align-items: flex-start;
+        justify-content: center; padding: 8vh 20px; z-index: 50; }
+      .overlay.open { display: flex; }
+      .modal { width: 100%; max-width: 520px; background: var(--surface);
+        border: 1px solid var(--border-strong); border-radius: var(--r);
+        box-shadow: 0 16px 48px rgba(0,0,0,.5); overflow: hidden; }
+      .modal-head { display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 18px; border-bottom: 1px solid var(--border); }
+      .modal-head h3 { font-size: 15px; letter-spacing: -0.01em; }
+      .modal-head .x { background: transparent; border: none; color: var(--muted);
+        font-size: 18px; cursor: pointer; padding: 0 4px; }
+      .modal-body { padding: 18px; }
+      textarea { width: 100%; background: var(--bg); border: 1px solid var(--border-strong);
+        color: var(--text); border-radius: var(--r-sm); padding: 10px 12px;
+        font-family: "Geist Mono"; font-size: 12px; line-height: 1.5; min-height: 130px;
+        resize: vertical; }
+      textarea:focus { outline: none; border-color: var(--text); }
+      .modal-foot { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+      .note { color: var(--faint); font-size: 12px; }
+      .result { margin-top: 6px; border: 1px solid var(--border); border-radius: var(--r-sm);
+        padding: 14px; background: var(--bg); }
+      .result .k { color: var(--muted); font-size: 11px; text-transform: uppercase;
+        letter-spacing: 0.06em; margin-bottom: 4px; }
+      .result .val { font-family: "Geist Mono"; font-size: 12px; word-break: break-all;
+        color: var(--text); margin-bottom: 12px; }
+      .result .warn { color: var(--warn); font-size: 12px; }
     </style>
   </head>
   <body>
@@ -151,7 +186,10 @@
     <main>
       <div class="layout">
         <div class="panel">
-          <h2>Agents</h2>
+          <div class="panel-head">
+            <h2>Agents</h2>
+            <button class="btn-ghost" id="new-agent-btn" type="button">+ New</button>
+          </div>
           <div id="agent-list"><div class="empty">Loading…</div></div>
         </div>
         <div class="panel" id="detail">
@@ -159,6 +197,36 @@
         </div>
       </div>
     </main>
+
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>New agent</h3>
+          <button class="x" id="modal-close" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="new-agent-form">
+            <div class="field"><label>Name</label>
+              <input name="name" placeholder="My Agent" autocomplete="off" required /></div>
+            <div class="field"><label>Model</label>
+              <input name="model" value="gpt-5.4-mini" autocomplete="off" /></div>
+            <div class="field"><label>agent.ts</label>
+              <textarea name="code" spellcheck="false">import { defineAgent } from "@helm/agent";
+
+export default defineAgent({
+  async run(input, ctx) {
+    return { echo: input };
+  },
+});</textarea></div>
+            <div class="modal-foot">
+              <button type="submit" id="deploy-btn">Deploy</button>
+              <span class="note" id="deploy-note">Provisions a dedicated Convex DB — ~1 min.</span>
+            </div>
+          </form>
+          <div id="deploy-result"></div>
+        </div>
+      </div>
+    </div>
 
     <script>
       const fmtUsd = (n) => "$" + (n ?? 0).toFixed(4);
@@ -293,6 +361,63 @@
           loadAgents();
         });
       }
+
+      // --- New agent modal ---
+      const overlay = document.getElementById("overlay");
+      function openModal() {
+        document.getElementById("deploy-result").innerHTML = "";
+        overlay.classList.add("open");
+      }
+      function closeModal() { overlay.classList.remove("open"); }
+      document.getElementById("new-agent-btn").addEventListener("click", openModal);
+      document.getElementById("modal-close").addEventListener("click", closeModal);
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+
+      document.getElementById("new-agent-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const els = f.elements;
+        const name = els["name"].value.trim();
+        if (!name) return;
+        const btn = document.getElementById("deploy-btn");
+        const note = document.getElementById("deploy-note");
+        btn.disabled = true;
+        btn.textContent = "Deploying…";
+        note.textContent = "Provisioning database — this can take ~1 minute.";
+        try {
+          const res = await authedFetch("/api/deploy", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              name,
+              model: els["model"].value.trim() || undefined,
+              files: [{ path: "agent.ts", content: els["code"].value }],
+            }),
+          });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.detail || body.error || ("HTTP " + res.status));
+          document.getElementById("deploy-result").innerHTML = `
+            <div class="result">
+              <div class="k">Endpoint</div>
+              <div class="val">${esc(body.agentUrl)}</div>
+              <div class="k">API key — shown once, copy it now</div>
+              <div class="val">${esc(body.key)}</div>
+              <div class="k">Database</div>
+              <div class="val">${esc(body.convexUrl || "—")}</div>
+              <div class="warn">The key is not stored in plaintext and won't be shown again.</div>
+            </div>`;
+          f.reset();
+          els["model"].value = "gpt-5.4-mini";
+          loadAgents();
+        } catch (err) {
+          document.getElementById("deploy-result").innerHTML =
+            `<div class="result"><div class="warn">Deploy failed: ${esc(err.message)}</div></div>`;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Deploy";
+          note.textContent = "Provisions a dedicated Convex DB — ~1 min.";
+        }
+      });
 
       loadAgents();
     </script>
