@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0B0B0D;
+  color: #F3F2EE;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', sans-serif;
+}
+
+code, pre {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+a {
+  color: #F3F2EE;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: #FFFFFF;
+}
+
+button {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.2s;
+}
+
+::selection {
+  background-color: rgba(243, 242, 238, 0.2);
+  color: #F3F2EE;
+}
