@@ -1,44 +1,65 @@
 @import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme {
+  --color-bg-dark: #0B0B0D;
+  --color-bg-light: #F3F2EE;
+  --color-surface-dark: #1A1A1E;
+  --color-surface-light: #E9E8E3;
+  --color-accent: #F3F2EE;
+  --color-accent-hover: #FFFFFF;
+  --color-text-muted: #8B8D91;
+  --color-text-primary: #F3F2EE;
+
+  --font-sora: Sora, sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  --radius-xs: 6px;
+  --radius-sm: 12px;
+  --radius-md: 20px;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-body {
-  background-color: #0B0B0D;
-  color: #F3F2EE;
-}
+  html {
+    scroll-behavior: smooth;
+  }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Sora', sans-serif;
-}
+  body {
+    background-color: #0B0B0D;
+    color: #F3F2EE;
+  }
 
-code, pre {
-  font-family: 'JetBrains Mono', monospace;
-}
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', sans-serif;
+  }
 
-a {
-  color: #F3F2EE;
-  text-decoration: none;
-  transition: color 0.2s;
-}
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
 
-a:hover {
-  color: #FFFFFF;
-}
+  a {
+    color: #F3F2EE;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
 
-button {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  transition: all 0.2s;
-}
+  a:hover {
+    color: #FFFFFF;
+  }
 
-::selection {
-  background-color: rgba(243, 242, 238, 0.2);
-  color: #F3F2EE;
+  button {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: all 0.2s;
+  }
+
+  ::selection {
+    background-color: rgba(243, 242, 238, 0.2);
+    color: #F3F2EE;
+  }
 }
