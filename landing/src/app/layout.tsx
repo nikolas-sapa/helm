@@ -3,10 +3,16 @@ import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://helm-internal-agent-platform.vercel.app'),
   title: 'Helm — Vercel for internal agents',
   description: 'Deploy an internal agent in one command. Govern it in zero extra ones.',
   icons: {
     icon: '/favicon.ico',
+  },
+  openGraph: {
+    title: 'Helm — Vercel for internal agents',
+    description: 'Deploy an internal agent in one command. Govern it in zero extra ones.',
+    images: ['/og.png'],
   },
 };
 

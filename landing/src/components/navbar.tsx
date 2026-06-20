@@ -13,9 +13,6 @@ export default function Navbar() {
           <a href="#pricing" className="text-sm text-text-muted hover:text-accent transition-colors">
             Pricing
           </a>
-          <a href="#docs" className="text-sm text-text-muted hover:text-accent transition-colors">
-            Docs
-          </a>
           <a
             href="https://github.com/nikolas-sapa/helm"
             target="_blank"

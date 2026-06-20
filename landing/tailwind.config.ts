@@ -16,6 +16,7 @@ const config: Config = {
         'accent': '#F3F2EE',
         'accent-hover': '#FFFFFF',
         'text-muted': '#8B8D91',
+        'text-primary': '#F3F2EE',
       },
       fontFamily: {
         sora: ['Sora', 'sans-serif'],
