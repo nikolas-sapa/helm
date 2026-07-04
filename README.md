@@ -2,6 +2,48 @@
 
 An employee writes an agent, runs one command, and gets **hosting + a Convex database**. IT scopes what each agent can touch, watches every execution, and tracks token spend per agent.
 
+## What is Helm?
+
+**Helm is a deployment and governance platform for internal AI agents.** An engineer ships an agent with one command and gets hosting plus a dedicated per-agent database; IT scopes the agent's tools and domains, watches every run, caps its token spend, and can kill it instantly.
+
+### Why Helm
+
+Engineers write agents. Then what? Today they ship as ad-hoc scripts, notebooks, or unsandboxed processes — nobody knows how many are running or what they can touch. Helm makes the deploy step the governance step: the same command that hosts the agent also registers it, mints a key, provisions its database, and puts it under an IT policy (allowed tools, allowed domains, per-run and monthly token budgets). Spend is metered per agent. The LLM key is parent-held, so tenant code can't read it or forge token usage to dodge a budget cap.
+
+### Helm vs the alternatives
+
+| | Helm | Agent frameworks (LangGraph, CrewAI, AutoGen) | Generic hosting (Modal, Vercel, a raw VM) |
+|---|---|---|---|
+| What it's for | **Deploying + governing** agents your team already wrote | **Building** agent logic | Running arbitrary code |
+| IT policy per agent (tools/domains/budget) | Built in | Not its job | Not its job |
+| Per-agent token metering + spend caps | Built in | No | No |
+| Kill-switch + run history for IT | Built in | No | No |
+| One-command deploy + provisioned DB | Yes | No | Partial (you wire the DB) |
+
+Helm doesn't replace a framework — you can build the agent however you like, then deploy it into Helm. It replaces the "just run it on a VM" step that leaves IT blind.
+
+### When to use Helm
+
+- Coworkers are writing internal agents and IT has no inventory, no spend visibility, and no off switch.
+- You need a per-agent token budget (per-run and monthly) enforced at execution time, not reconciled after the bill.
+- You need an audit trail: which agent ran, when, what it touched, what it cost.
+- You want one deploy command to also handle hosting, keys, and a per-agent database.
+- You're a single org and can gate deploys behind an admin — deploy is admin-only by design.
+
+Not the fit (yet): untrusted multi-tenant workloads. Helm enforces the trust boundary in code (plain child-process execution fails closed unless you opt in), but the OS-isolated container backend it can require is a deployment prerequisite, not bundled in this version.
+
+### FAQ
+
+**Do I need an LLM API key?** No. The default backend is the Codex CLI using the operator's existing Codex login — no key to manage. You can switch to Anthropic, OpenAI, OpenRouter, or a local OpenAI-compatible endpoint via env vars.
+
+**How does IT cap spend?** Every agent has a policy with per-run and monthly token budgets. A budget gate runs before execution; tokens are metered per run and recorded per agent. The LLM call is proxied by the parent process, so agent code can't under-report usage.
+
+**What can IT actually see and control?** A dashboard listing every agent with its spend, full run history, and a live policy editor for allowed tools, allowed domains, and both budget limits.
+
+**Is it multi-tenant safe?** Single-org, yes — deploy is admin-gated, so the deployer is the operator. For untrusted tenants you must supply an OS-isolated execution backend (`HELM_EXECUTION=docker`); the boundary is enforced in code but that backend is infra you provide.
+
+**What's the stack?** TypeScript monorepo: a pure core (cost/policy/hashing), an agent contract with domain-gated fetch, a runtime (Codex runner, Convex provisioner, run capture), a CLI, and a Convex + Hono control plane with a dashboard.
+
 Agents reason via a **pluggable LLM backend**. Default is the **Codex CLI — no API key**, using the operator's Codex login. Operators can switch to any API provider by env:
 
 ```bash
