@@ -1,22 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-dark: #0B0B0D;
-  --color-bg-light: #F3F2EE;
-  --color-surface-dark: #1A1A1E;
-  --color-surface-light: #E9E8E3;
-  --color-accent: #F3F2EE;
-  --color-accent-hover: #FFFFFF;
-  --color-text-muted: #8B8D91;
-  --color-text-primary: #F3F2EE;
+  --color-bg-dark: #0a0a0a;
+  --color-bg-light: #ffffff;
+  --color-surface-dark: #171717;
+  --color-surface-light: #fafafa;
+  --color-border-dark: #2e2e2e;
+  --color-border-light: #ebebeb;
+  --color-accent: #006bff;
+  --color-accent-hover: #0059d1;
+  --color-text-muted: #8f8f8f;
+  --color-text-primary: #ededed;
 
-  --font-sora: Sora, sans-serif;
-  --font-jakarta: "Plus Jakarta Sans", sans-serif;
-  --font-mono: "Geist Mono", monospace;
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 
   --radius-xs: 6px;
   --radius-sm: 12px;
-  --radius-md: 20px;
+  --radius-md: 16px;
 }
 
 @layer base {
@@ -30,36 +31,44 @@
     scroll-behavior: smooth;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
   body {
-    background-color: #0B0B0D;
-    color: #F3F2EE;
+    background-color: #0a0a0a;
+    color: #ededed;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Sora', sans-serif;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-weight: 600;
   }
 
   code, pre {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-geist-mono), monospace;
   }
 
   a {
-    color: #F3F2EE;
+    color: inherit;
     text-decoration: none;
     transition: color 0.2s;
   }
 
-  a:hover {
-    color: #FFFFFF;
-  }
-
   button {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
     transition: all 0.2s;
   }
 
+  :focus-visible {
+    outline: 2px solid #006bff;
+    outline-offset: 2px;
+  }
+
   ::selection {
-    background-color: rgba(243, 242, 238, 0.2);
-    color: #F3F2EE;
+    background-color: rgba(237, 237, 237, 0.2);
+    color: #ededed;
   }
 }

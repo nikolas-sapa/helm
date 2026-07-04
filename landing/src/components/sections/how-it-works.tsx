@@ -31,9 +31,9 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section className="py-20 px-6 border-t border-surface-dark border-opacity-30">
+    <section className="py-20 px-6 border-t border-border-dark/60">
       <div className="max-w-6xl mx-auto">
-        <h2 className="font-sora font-bold text-4xl mb-16 text-center">How it works</h2>
+        <h2 className="font-semibold text-4xl mb-16 text-center">How it works</h2>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((step, index) => {
@@ -41,11 +41,11 @@ export default function HowItWorks() {
             return (
               <div
                 key={index}
-                className="relative p-8 bg-surface-dark bg-opacity-20 border border-surface-dark border-opacity-30 rounded-sm"
+                className="relative p-8 bg-surface-dark/40 border border-border-dark rounded-sm"
               >
                 <div className="text-sm font-mono text-text-muted mb-4">{step.num}</div>
-                <Icon size={24} className="mb-6 text-accent" />
-                <h3 className="font-sora font-semibold text-lg mb-3">
+                <Icon size={24} className="mb-6 text-text-primary" />
+                <h3 className="font-semibold text-lg mb-3">
                   {step.title}
                 </h3>
                 <p className="text-text-muted text-sm leading-relaxed">
@@ -53,16 +53,16 @@ export default function HowItWorks() {
                 </p>
 
                 {index < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-px bg-surface-dark bg-opacity-30 -translate-y-1/2" />
+                  <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-px bg-border-dark -translate-y-1/2" />
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="mt-16 p-8 bg-surface-dark bg-opacity-10 border border-surface-dark border-opacity-30 rounded-sm">
+        <div className="mt-16 p-8 bg-surface-dark/20 border border-border-dark rounded-sm">
           <div className="font-mono text-sm text-text-muted mb-4">Architecture</div>
-          <div className="text-accent font-mono text-sm leading-relaxed space-y-1">
+          <div className="text-text-primary font-mono text-sm leading-relaxed space-y-1">
             <div>@helm/core → cost & policy engine</div>
             <div>@helm/agent → defineAgent contract</div>
             <div>@helm/runtime → execution & metering</div>

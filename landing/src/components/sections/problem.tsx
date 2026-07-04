@@ -17,17 +17,17 @@ export default function Problem() {
   ];
 
   return (
-    <section className="py-20 px-6 border-t border-surface-dark border-opacity-30">
+    <section className="py-20 px-6 border-t border-border-dark/60">
       <div className="max-w-5xl mx-auto">
-        <h2 className="font-sora font-bold text-4xl mb-12 text-center">The problem</h2>
+        <h2 className="font-semibold text-4xl mb-12 text-center">The problem</h2>
 
         <div className="grid md:grid-cols-3 gap-8">
           {problems.map((problem, index) => (
             <div
               key={index}
-              className="p-8 bg-surface-dark bg-opacity-20 border border-surface-dark border-opacity-30 rounded-sm"
+              className="p-8 bg-surface-dark/40 border border-border-dark rounded-sm"
             >
-              <h3 className="font-sora font-semibold text-lg mb-3 leading-snug">
+              <h3 className="font-semibold text-lg mb-3 leading-snug">
                 {problem.title}
               </h3>
               <p className="text-text-muted leading-relaxed">

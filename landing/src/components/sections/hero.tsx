@@ -22,11 +22,11 @@ export default function Hero() {
   return (
     <section className="pt-32 pb-20 px-6">
       <div className="max-w-4xl mx-auto text-center">
-        <div className="inline-block mb-6 px-3 py-1 bg-surface-dark bg-opacity-50 rounded-xs border border-surface-dark text-text-muted text-sm">
+        <div className="inline-block mb-6 px-3 py-1 bg-surface-dark/50 rounded-xs border border-border-dark text-text-muted text-sm">
           self-hosted control plane · keyless by default · per-agent DB included
         </div>
 
-        <h1 className="font-sora font-bold text-6xl md:text-7xl mb-6 leading-tight tracking-tight">
+        <h1 className="font-semibold text-6xl md:text-7xl mb-6 leading-tight tracking-tight">
           Deploy an internal agent in one command
         </h1>
 
@@ -36,7 +36,7 @@ export default function Hero() {
 
         <div className="flex flex-col items-center gap-8">
           <div className="w-full max-w-xl">
-            <div className="bg-surface-dark bg-opacity-40 border border-surface-dark rounded-sm p-6 font-mono text-accent relative overflow-hidden">
+            <div className="bg-surface-dark/40 border border-border-dark rounded-sm p-6 font-mono text-text-primary relative overflow-hidden">
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">$</span>
                 <span>{displayText}</span>
@@ -47,9 +47,9 @@ export default function Hero() {
 
           <a
             href="#cta"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-bg-dark font-jakarta font-semibold rounded-xs hover:bg-accent-hover transition-colors group"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white font-semibold rounded-xs hover:bg-accent-hover transition-colors group"
           >
-            Join the waitlist
+            Get early access
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </a>
         </div>

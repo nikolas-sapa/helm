@@ -59,9 +59,9 @@ export default function Pricing() {
     'All tiers include per-agent token spend metering and scaling. Enterprise includes custom overage pricing.';
 
   return (
-    <section id="pricing" className="py-20 px-6 border-t border-surface-dark border-opacity-30">
+    <section id="pricing" className="py-20 px-6 border-t border-border-dark/60">
       <div className="max-w-6xl mx-auto">
-        <h2 className="font-sora font-bold text-4xl mb-4 text-center">Simple pricing</h2>
+        <h2 className="font-semibold text-4xl mb-4 text-center">Simple pricing</h2>
         <p className="text-text-muted text-center mb-16 max-w-2xl mx-auto">
           Pay for what you use. Scale without negotiation.
         </p>
@@ -72,21 +72,21 @@ export default function Pricing() {
               key={index}
               className={`relative p-8 rounded-sm border transition-all ${
                 tier.highlight
-                  ? 'bg-surface-dark bg-opacity-30 border-accent border-opacity-50 ring-1 ring-accent ring-opacity-20'
-                  : 'bg-surface-dark bg-opacity-20 border-surface-dark border-opacity-30'
+                  ? 'bg-surface-dark/60 border-border-dark ring-1 ring-border-dark'
+                  : 'bg-surface-dark/40 border-border-dark'
               }`}
             >
               {tier.highlight && (
-                <div className="absolute -top-3 left-6 px-3 py-1 bg-accent text-bg-dark text-xs font-semibold rounded-xs">
+                <div className="absolute -top-3 left-6 px-3 py-1 bg-text-primary text-bg-dark text-xs font-semibold rounded-xs">
                   Most popular
                 </div>
               )}
 
-              <h3 className="font-sora font-semibold text-2xl mb-2">
+              <h3 className="font-semibold text-2xl mb-2">
                 {tier.name}
               </h3>
               <div className="mb-4">
-                <div className="text-3xl font-bold text-accent">
+                <div className="text-3xl font-semibold text-text-primary">
                   {tier.price}
                   {tier.period && <span className="text-lg text-text-muted">{tier.period}</span>}
                 </div>
@@ -99,20 +99,21 @@ export default function Pricing() {
                 {tier.description}
               </p>
 
-              <button
-                className={`w-full py-3 px-4 rounded-xs font-jakarta font-semibold mb-8 transition-colors ${
+              <a
+                href="#cta"
+                className={`block w-full py-3 px-4 rounded-xs text-center font-semibold mb-8 transition-colors ${
                   tier.highlight
-                    ? 'bg-accent text-bg-dark hover:bg-accent-hover'
-                    : 'bg-accent bg-opacity-10 text-accent hover:bg-opacity-20'
+                    ? 'bg-accent text-white hover:bg-accent-hover'
+                    : 'bg-accent/10 text-accent hover:bg-accent/20'
                 }`}
               >
                 {tier.cta}
-              </button>
+              </a>
 
               <div className="space-y-3">
                 {tier.features.map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-3">
-                    <Check size={18} className="text-accent flex-shrink-0 mt-0.5" />
+                    <Check size={18} className="text-text-muted flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-text-muted leading-relaxed">
                       {feature}
                     </span>
