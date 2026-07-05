@@ -43,7 +43,7 @@ export default function Governance() {
             return (
               <div
                 key={index}
-                className="p-8 bg-surface-dark/40 border border-border-dark rounded-sm"
+                className="p-8 bg-surface-dark/40 border border-border-dark/70 rounded-xl"
               >
                 <Icon size={24} className="mb-6 text-text-primary" />
                 <h3 className="font-semibold text-lg mb-3">
@@ -57,7 +57,7 @@ export default function Governance() {
           })}
         </div>
 
-        <div className="max-w-2xl mx-auto p-8 bg-surface-dark/60 border border-border-dark rounded-sm">
+        <div className="max-w-2xl mx-auto p-8 bg-surface-dark/60 border border-border-dark/70 rounded-2xl">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h4 className="font-semibold text-lg mb-2">
@@ -67,30 +67,28 @@ export default function Governance() {
             </div>
             <button
               onClick={() => setKillSwitchOn(!killSwitchOn)}
-              className="flex items-center gap-3 px-4 py-2 bg-accent/10 rounded-xs hover:bg-accent/20 transition-colors"
+              className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-white text-[#171717] text-sm font-medium shadow-sm hover:bg-white/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
-              <ToggleRight
-                size={20}
-                className={`transition-colors ${killSwitchOn ? 'text-accent' : 'text-text-muted'}`}
+              <span
+                className={`w-2 h-2 rounded-full transition-colors ${killSwitchOn ? 'bg-[#47a447]' : 'bg-[#8f8f8f]'}`}
+                aria-hidden
               />
-              <span className="text-sm font-medium">
-                {killSwitchOn ? 'Running' : 'Killed'}
-              </span>
+              {killSwitchOn ? 'Running' : 'Killed'}
             </button>
           </div>
 
           <div className="space-y-3 font-mono text-xs">
-            <div className="flex justify-between py-2 border-b border-border-dark/60">
+            <div className="flex justify-between py-2 border-b border-border-dark/50">
               <span className="text-text-muted">Spend to date</span>
               <span className="text-text-primary">$3.47</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-border-dark/60">
+            <div className="flex justify-between py-2 border-b border-border-dark/50">
               <span className="text-text-muted">Remaining budget</span>
               <span className="text-text-primary">$6.53</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-text-muted">Status</span>
-              <span className={killSwitchOn ? 'text-accent' : 'text-text-muted'}>
+              <span className={killSwitchOn ? 'text-[#47a447]' : 'text-text-muted'}>
                 {killSwitchOn ? 'Active' : 'Terminated'}
               </span>
             </div>
