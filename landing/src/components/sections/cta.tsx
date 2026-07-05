@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import WaitlistForm from './waitlist-form';
 
 export default function CTA() {
   return (
@@ -12,17 +12,10 @@ export default function CTA() {
         </h2>
 
         <p className="text-text-muted mb-12 text-lg leading-relaxed">
-          Helm is in private beta. Email us and we&apos;ll get you in.
+          Helm is in private beta. Join the waitlist and we&apos;ll get you in.
         </p>
 
-        {/* TODO: swap mailto for real capture provider */}
-        <a
-          href="mailto:sapalidis.giannis@gmail.com?subject=Helm%20early%20access"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-white font-semibold rounded-xs hover:bg-accent-hover transition-colors"
-        >
-          Get early access
-          <ArrowRight size={18} />
-        </a>
+        <WaitlistForm />
       </div>
     </section>
   );
