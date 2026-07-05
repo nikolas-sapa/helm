@@ -20,7 +20,16 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_RE = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']{2,}$/;
+
+function escapeHtml(s: unknown): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export type WaitlistResult =
   | { ok: true }
@@ -40,12 +49,12 @@ function adminHtml(email: string, ip: string, time: string): string {
     <tr>
       <td style="padding:28px;">
         <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#9aa5b4;letter-spacing:0.06em;text-transform:uppercase;">New signup</p>
-        <p style="margin:0 0 20px;font-size:20px;font-weight:700;color:#0a0a0a;">${email}</p>
+        <p style="margin:0 0 20px;font-size:20px;font-weight:700;color:#0a0a0a;">${escapeHtml(email)}</p>
         <table cellpadding="0" cellspacing="0" style="font-size:13px;color:#4a5568;">
           <tr><td style="padding:3px 0;color:#9aa5b4;width:80px;">Product</td><td style="padding:3px 0;font-weight:600;">${PRODUCT}</td></tr>
-          <tr><td style="padding:3px 0;color:#9aa5b4;">Email</td><td style="padding:3px 0;">${email}</td></tr>
+          <tr><td style="padding:3px 0;color:#9aa5b4;">Email</td><td style="padding:3px 0;">${escapeHtml(email)}</td></tr>
           <tr><td style="padding:3px 0;color:#9aa5b4;">Time</td><td style="padding:3px 0;">${time} (Europe/Athens)</td></tr>
-          <tr><td style="padding:3px 0;color:#9aa5b4;">IP</td><td style="padding:3px 0;">${ip}</td></tr>
+          <tr><td style="padding:3px 0;color:#9aa5b4;">IP</td><td style="padding:3px 0;">${escapeHtml(ip)}</td></tr>
         </table>
       </td>
     </tr>
