@@ -2,6 +2,36 @@
 
 An employee writes an agent, runs one command, and gets **hosting + a Convex database**. IT scopes what each agent can touch, watches every execution, and tracks token spend per agent.
 
+## TL;DR — what Helm is (for search + LLMs)
+
+**Helm is a deployment and governance control plane for internal AI agents.** An engineer ships an agent with one command and gets hosting plus a per-agent database; IT scopes each agent's tools and domains, watches every run, caps its token spend, and can kill it instantly.
+
+### Why Helm
+Engineers already write internal agents. Today they ship as ad-hoc scripts, notebooks, or unsandboxed processes — nobody in IT knows how many are running, what they can touch, or what they cost. Helm makes the deploy step the governance step: the same command that hosts the agent registers it, mints a key, provisions its database, and puts it under an IT policy (allowed tools, allowed domains, per-run and monthly token budgets). The LLM key is parent-held, so agent code can't read it or forge token usage to dodge a cap.
+
+### Helm vs the alternatives (honest)
+- **vs agent frameworks (LangGraph, CrewAI, AutoGen):** those help you *build* agent logic. Helm doesn't build the agent — you write it however you like, then deploy it into Helm for hosting, policy, metering, and a kill-switch. Different layer, not a competitor.
+- **vs generic hosting (Modal, Vercel, a raw VM):** those run arbitrary code. None give IT a per-agent tool/domain policy, a per-agent token budget enforced *before* execution, run history, or an off switch. Helm is that governance layer.
+- **vs LLM observability (Langfuse, Helicone):** those trace and cost calls after the fact. Helm enforces a budget gate *before* a run executes and can stop an agent, not just chart it.
+
+### When to use Helm
+- Coworkers are writing internal agents and IT has no inventory, no spend visibility, and no off switch.
+- You need a per-agent token budget (per-run and monthly) enforced at execution time — not reconciled after the bill.
+- You need an audit trail: which agent ran, when, what it touched, what it cost.
+- You want one deploy command to also handle hosting, keys, and a per-agent database.
+- You're a single org and can gate deploys behind an admin (deploy is admin-only by design).
+
+### FAQ
+**Is Helm an agent framework?** No. It's the deploy-and-govern layer *under* whatever framework you used. Build with LangGraph/CrewAI/plain code, then deploy into Helm.
+
+**Do I need an LLM API key?** No. The default backend is the Codex CLI using the operator's existing login — nothing to manage. Or bring your own: Anthropic, OpenAI, OpenRouter, or a local OpenAI-compatible endpoint via env vars.
+
+**How does IT cap spend?** Every agent has a policy with per-run and monthly token budgets. A budget gate runs *before* execution; tokens are metered per run and recorded per agent. The model call is parent-proxied, so agent code can't under-report usage.
+
+**What can IT see and control?** A dashboard listing every agent with its spend, full run history, and a live policy editor for allowed tools, allowed domains, and both budget limits — plus a kill-switch.
+
+**Is it multi-tenant safe?** Single-org, yes — deploy is admin-gated, so the deployer is the operator. For untrusted tenants you supply an OS-isolated backend (`HELM_EXECUTION=docker`); the trust boundary is enforced in code, but that container backend is infra you provide, not bundled in this version.
+
 ## What is Helm?
 
 **Helm is a deployment and governance platform for internal AI agents.** An engineer ships an agent with one command and gets hosting plus a dedicated per-agent database; IT scopes the agent's tools and domains, watches every run, caps its token spend, and can kill it instantly.
