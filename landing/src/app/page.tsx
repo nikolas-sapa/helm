@@ -2,7 +2,7 @@ import Hero from '@/components/sections/hero';
 import Problem from '@/components/sections/problem';
 import HowItWorks from '@/components/sections/how-it-works';
 import Governance from '@/components/sections/governance';
-import Pricing from '@/components/sections/pricing';
+import OpenSource from '@/components/sections/open-source';
 import CTA from '@/components/sections/cta';
 import Navbar from '@/components/navbar';
 
@@ -14,7 +14,7 @@ export default function Home() {
       <Problem />
       <HowItWorks />
       <Governance />
-      <Pricing />
+      <OpenSource />
       <CTA />
     </main>
   );

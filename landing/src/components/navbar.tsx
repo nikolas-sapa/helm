@@ -8,8 +8,14 @@ export default function Navbar() {
           Helm
         </div>
         <div className="flex items-center gap-8">
-          <a href="#pricing" className="text-sm text-text-muted hover:text-text-primary transition-colors">
-            Pricing
+          <a href="#open-source" className="text-sm text-text-muted hover:text-text-primary transition-colors">
+            Open source
+          </a>
+          <a
+            href="https://github.com/nikolas-sapa/helm"
+            className="text-sm text-text-muted hover:text-text-primary transition-colors"
+          >
+            GitHub
           </a>
         </div>
       </div>
