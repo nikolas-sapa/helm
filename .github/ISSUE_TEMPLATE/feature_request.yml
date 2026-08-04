@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an idea for Helm
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: What are you trying to do that Helm doesn't support today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: input
+    id: component
+    attributes:
+      label: Relevant package/app
+      placeholder: "e.g. packages/core, CLI, dashboard"
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false

@@ -1,6 +1,19 @@
 # Helm — Vercel for internal agents
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-F3F2EE?style=flat-square&labelColor=0B0B0D&color=0B0B0D)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-F3F2EE?style=flat-square&labelColor=0B0B0D&color=0B0B0D)](./tsconfig.base.json)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-F3F2EE?style=flat-square&labelColor=0B0B0D&color=0B0B0D)](./CONTRIBUTING.md)
+
 An employee writes an agent, runs one command, and gets **hosting + a Convex database**. IT scopes what each agent can touch, watches every execution, and tracks token spend per agent.
+
+## Quick start
+
+```bash
+npm install        # install all workspaces from the repo root
+npm test           # vitest across packages/*
+```
+
+For the full local demo (control plane + a deployed agent), see **Run the demo locally** below.
 
 ## TL;DR — what Helm is (for search + LLMs)
 
@@ -170,3 +183,11 @@ A deployed agent's own `agent.ts` runs in an isolated **child process** (temp di
 - **Sandbox execution** is structurally complete but blocked end-to-end on an `OPENAI_API_KEY` + installing codex in the sandbox image (see Execution modes).
 - **Agent DB writes:** provisioning now generates a per-agent Convex deploy key (`convex deployment token create … --save-env`) and injects it as `CONVEX_DEPLOY_KEY` into the run. Whether that dev key grants the agent's Convex client runtime write access is unverified (blocked on the same `OPENAI_API_KEY` gap that prevents an end-to-end agent run).
 - Dashboard API is gated by the admin token (sent as a Bearer header; the page prompts for it). For production, swap the prompt for a real session/SSO login.
+
+## Contributing
+
+Bug reports, feature requests, and PRs are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for dev setup, repo layout, and PR expectations. Please review the [Code of Conduct](./CODE_OF_CONDUCT.md), and see [SECURITY.md](./SECURITY.md) to report a vulnerability privately.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
