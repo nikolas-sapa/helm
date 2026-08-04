@@ -12,7 +12,8 @@ export default function CTA() {
         </h2>
 
         <p className="text-text-muted mb-12 text-lg leading-relaxed">
-          Helm is in private beta. Join the waitlist and we&apos;ll get you in.
+          Helm is open source and self-hosted. Clone the repo to run it, or leave your
+          email to hear when a release lands.
         </p>
 
         <WaitlistForm />
