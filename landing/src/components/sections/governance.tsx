@@ -14,13 +14,13 @@ export default function Governance() {
     },
     {
       icon: TrendingDown,
-      title: 'Per-agent spend caps',
-      description: 'Set a hard token budget. When it hits zero, the agent stops. No exceptions.',
+      title: 'Per-agent budget tracking',
+      description: 'Monthly admission checks use recorded usage. Per-run limits are checked after execution; concurrent runs can exceed the monthly limit.',
     },
     {
       icon: ToggleRight,
-      title: 'Hard kill switch',
-      description: 'One click in the dashboard stops any agent mid-run.',
+      title: 'Disable new runs',
+      description: 'One click blocks new runs. Already-running agents continue until completion or timeout.',
     },
     {
       icon: Eye,
@@ -34,7 +34,7 @@ export default function Governance() {
       <div className="max-w-6xl mx-auto">
         <h2 className="font-semibold text-4xl mb-4 text-center">IT sees and controls every agent</h2>
         <p className="text-text-muted text-center mb-16 max-w-2xl mx-auto">
-          This is what separates Helm from "just run it on a VM." IT controls what every agent can do, how much it costs, and when it stops.
+          This is what separates Helm from &quot;just run it on a VM.&quot; IT scopes tools and domains, tracks usage, and controls admission of new runs.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 mb-16">
@@ -73,7 +73,7 @@ export default function Governance() {
                 className={`w-2 h-2 rounded-full transition-colors ${killSwitchOn ? 'bg-[#47a447]' : 'bg-[#8f8f8f]'}`}
                 aria-hidden
               />
-              {killSwitchOn ? 'Running' : 'Killed'}
+              {killSwitchOn ? 'Enabled' : 'Disabled'}
             </button>
           </div>
 
@@ -89,7 +89,7 @@ export default function Governance() {
             <div className="flex justify-between py-2">
               <span className="text-text-muted">Status</span>
               <span className={killSwitchOn ? 'text-[#47a447]' : 'text-text-muted'}>
-                {killSwitchOn ? 'Active' : 'Terminated'}
+                {killSwitchOn ? 'Active' : 'New runs disabled'}
               </span>
             </div>
           </div>

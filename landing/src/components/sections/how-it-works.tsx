@@ -25,7 +25,7 @@ export default function HowItWorks() {
     {
       num: '04',
       title: 'IT governs everything',
-      description: 'Dashboard shows scope, token spend, and per-agent kill switches. No agent runs without governance.',
+      description: 'Dashboard shows scope, recorded token spend, and per-agent controls to disable new runs.',
       icon: Shield,
     },
   ];
