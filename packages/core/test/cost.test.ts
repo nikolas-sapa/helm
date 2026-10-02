@@ -7,6 +7,10 @@ const TEST_PRICES: PriceTable = {
 };
 
 describe("computeCost", () => {
+  it.each(["toString", "constructor", "__proto__"])("rejects inherited model %s", (model) => {
+    expect(() => computeCost({ tokensIn: 1, tokensOut: 1, model }, TEST_PRICES))
+      .toThrow(/unknown model/i);
+  });
   it("computes USD from token usage with injected prices", () => {
     const cost = computeCost(
       { tokensIn: 2_000_000, tokensOut: 1_000_000, model: "test-model" },

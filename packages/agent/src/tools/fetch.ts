@@ -1,4 +1,4 @@
-import { evaluateDomain, type Policy } from "@helm/core";
+import { evaluateDomain, evaluateTool, type Policy } from "@helm/core";
 
 export type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -9,7 +9,8 @@ export type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
  */
 export function makeFetchTool(policy: Policy, under: FetchFn = fetch): FetchFn {
   return async (url, init) => {
+    if (!evaluateTool(policy, "fetch")) throw new Error("tool not allowed: fetch");
     if (!evaluateDomain(policy, url)) throw new Error(`domain not allowed: ${url}`);
-    return under(url, init);
+    return under(url, { ...init, redirect: "error" });
   };
 }
