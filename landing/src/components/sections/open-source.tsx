@@ -17,9 +17,9 @@ export default function OpenSource() {
       description: 'Every control ships in the repo. Nothing is held back behind a tier.',
       points: [
         'Per-agent tool and domain scoping',
-        'Per-run and monthly token budgets',
-        'Budget gate enforced before execution',
-        'Run history and per-agent kill switch',
+        'Per-run checks and monthly admission budgets',
+        'Recorded monthly usage checked before new runs',
+        'Run history and per-agent controls to disable new runs',
       ],
     },
     {

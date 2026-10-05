@@ -35,7 +35,7 @@ export const PRICES: PriceTable = {
  * the unverified PRICES constant.
  */
 export function computeCost(u: Usage, prices: PriceTable = PRICES): number {
-  const p = prices[u.model];
+  const p = Object.hasOwn(prices, u.model) ? prices[u.model] : undefined;
   if (!p) throw new Error(`unknown model: ${u.model}`);
   return (u.tokensIn / 1_000_000) * p.in + (u.tokensOut / 1_000_000) * p.out;
 }

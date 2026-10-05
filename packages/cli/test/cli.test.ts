@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, statSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, statSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readConfig, writeConfig } from "../src/config.js";
@@ -32,6 +32,23 @@ describe("config", () => {
 });
 
 describe("collectFiles", () => {
+  it("skips symlinked files and directories outside the project", () => {
+    const root = join(dir, "project");
+    mkdirSync(root);
+    writeFileSync(join(root, "agent.ts"), "export default {}");
+    writeFileSync(join(dir, "outside.json"), "fixture");
+    mkdirSync(join(dir, "outside-dir"));
+    writeFileSync(join(dir, "outside-dir", "private.json"), "fixture");
+    symlinkSync(join(dir, "outside.json"), join(root, "linked.json"));
+    symlinkSync(join(dir, "outside-dir"), join(root, "linked-dir"));
+    expect(collectFiles(root).map((file) => file.path)).toEqual(["agent.ts"]);
+  });
+
+  it("skips cyclic directory symlinks", () => {
+    writeFileSync(join(dir, "agent.ts"), "export default {}");
+    symlinkSync(dir, join(dir, "loop"));
+    expect(collectFiles(dir).map((file) => file.path)).toEqual(["agent.ts"]);
+  });
   it("collects source files and skips node_modules/.git", () => {
     writeFileSync(join(dir, "agent.ts"), "export default {}");
     writeFileSync(join(dir, "data.json"), "{}");

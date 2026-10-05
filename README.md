@@ -17,7 +17,7 @@ For the full local demo (control plane + a deployed agent), see **Run the demo l
 
 ## TL;DR — what Helm is (for search + LLMs)
 
-**Helm is a deployment and governance control plane for internal AI agents.** An engineer ships an agent with one command and gets hosting plus a per-agent database; IT scopes each agent's tools and domains, watches every run, caps its token spend, and can kill it instantly.
+**Helm is a deployment and governance control plane for internal AI agents.** An engineer ships an agent with one command and gets hosting plus a per-agent database; IT scopes each agent's tools and domains, watches usage, sets admission budget gates, and can disable new runs.
 
 Helm is not an agent framework. It is the deploy-and-govern layer *under* whatever framework you used — build with LangGraph, CrewAI, or plain code, then deploy it into Helm.
 
@@ -33,8 +33,8 @@ Engineers write agents. Then what? Today they ship as ad-hoc scripts, notebooks,
 |---|---|---|---|
 | What it's for | **Deploying + governing** agents your team already wrote | **Building** agent logic | Running arbitrary code |
 | IT policy per agent (tools/domains/budget) | Built in | Not its job | Not its job |
-| Per-agent token metering + spend caps | Built in | No | No |
-| Kill-switch + run history for IT | Built in | No | No |
+| Per-agent token metering + admission budget gates | Built in | No | No |
+| Disable new runs + run history for IT | Built in | No | No |
 | One-command deploy + provisioned DB | Yes | No | Partial (you wire the DB) |
 
 Helm doesn't replace a framework — you can build the agent however you like, then deploy it into Helm. It replaces the "just run it on a VM" step that leaves IT blind.
@@ -42,7 +42,7 @@ Helm doesn't replace a framework — you can build the agent however you like, t
 ### When to use Helm
 
 - Coworkers are writing internal agents and IT has no inventory, no spend visibility, and no off switch.
-- You need a per-agent token budget (per-run and monthly) enforced at execution time, not reconciled after the bill.
+- You need per-agent token metering and a monthly admission gate; hard spending ceilings require additional runtime controls.
 - You need an audit trail: which agent ran, when, what it touched, what it cost.
 - You want one deploy command to also handle hosting, keys, and a per-agent database.
 - You're a single org and can gate deploys behind an admin — deploy is admin-only by design.
@@ -53,7 +53,7 @@ Not the fit (yet): untrusted multi-tenant workloads. Helm enforces the trust bou
 
 **Do I need an LLM API key?** No. The default backend is the Codex CLI using the operator's existing Codex login — no key to manage. You can switch to Anthropic, OpenAI, OpenRouter, or a local OpenAI-compatible endpoint via env vars.
 
-**How does IT cap spend?** Every agent has a policy with per-run and monthly token budgets. A budget gate runs before execution; tokens are metered per run and recorded per agent. The LLM call is proxied by the parent process, so agent code can't under-report usage.
+**How does IT track budget limits?** Every agent has a policy with per-run and monthly token budgets. The monthly gate checks recorded usage before admission; the per-run ceiling is checked after execution. Concurrent runs do not reserve monthly capacity, so these are not hard spending ceilings. The parent process meters LLM usage and records it per agent.
 
 **What can IT actually see and control?** A dashboard listing every agent with its spend, full run history, and a live policy editor for allowed tools, allowed domains, and both budget limits.
 
@@ -135,7 +135,7 @@ Open **http://127.0.0.1:8787/** to see the agent, its spend, run history, and ed
 ## Tests
 
 ```bash
-npm test          # 39 unit tests across core / agent / runtime / cli
+npm test          # unit and local integration tests across core / agent / runtime / cli
 ```
 
 ## Execution modes
@@ -147,11 +147,17 @@ npm test          # 39 unit tests across core / agent / runtime / cli
 
 A deployed agent's own `agent.ts` runs in an isolated **child process** (temp dir, restricted env, hard timeout, process-group kill, stdout cap). It gets `ctx.complete(prompt)` (metered model call), domain-gated `ctx.fetch`, and its `ctx.convex` creds. Verified live: a deployed agent's own `run()` executes and is metered.
 
+`ctx.fetch` requires the `fetch` tool permission and an exact allowed host.
+Automatic redirects are rejected, including redirects to another allowed host.
+Source collection skips symlinked files and directories.
+
 **LLM is parent-proxied:** `ctx.complete` sends the prompt to the parent over IPC; the parent holds the key, makes the call, and meters tokens. So tenant code can't read the LLM key or forge its token usage to evade budget caps (verified live).
 
 **Trust model — enforced, not just documented:** plain child-process execution refuses to run unless `HELM_TRUST_DEPLOYERS=true` is explicitly set (trusted single-org — deploy is admin-gated, so deployer = operator). Without that flag, bundle runs fail closed. For **untrusted multi-tenant**, set `HELM_EXECUTION=docker` to require an OS-isolated backend (container: `--network none`, read-only fs, dropped caps). That container backend is a **deployment prerequisite and is not built into this version** — a child process still shares the host fs/network and `HOME`. The boundary is enforced in code (`resolveBundleExecution`); the backend is the remaining infra build.
 
 ## Known gaps (tracked, not hidden)
+
+- **Active runs and budgets:** disabling an agent blocks new runs; it does not cancel an active run. Per-run limits are post-execution checks, and concurrent runs can exceed the monthly cap without reservations.
 
 - **Pricing:** verified for the default model `gpt-5.4-mini` ($0.75/$4.50 per 1M) and the Anthropic fallbacks (sourced 2026-06-15). `gpt-5-codex`/`gpt-5` were dropped — those exact IDs weren't on OpenAI's pricing page. `computeCost` takes the price table as an argument so the math is tested independently.
 - **Sandbox execution** is structurally complete but blocked end-to-end on an `OPENAI_API_KEY` + installing codex in the sandbox image (see Execution modes).
