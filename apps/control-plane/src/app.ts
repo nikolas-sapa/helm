@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { ConvexHttpClient } from "convex/browser";
 import { hashBundle, evaluateBudget, PRICES, type Policy } from "@helm/core";
@@ -63,7 +63,10 @@ export function createApp(deps: AppDeps): Hono {
     const header = (c.req.header("x-helm-admin") ?? "").trim();
     const bearer = (c.req.header("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
     const presented = header || bearer;
-    return presented.length > 0 && presented === ADMIN_TOKEN;
+    if (presented.length === 0) return false;
+    const a = Buffer.from(presented, "utf8");
+    const b = Buffer.from(ADMIN_TOKEN, "utf8");
+    return a.length === b.length && timingSafeEqual(a, b);
   }
 
   // ---- Dashboard read/write API (admin-gated; the browser presents the token) ----
@@ -219,8 +222,8 @@ export function createApp(deps: AppDeps): Hono {
     const found = await convex.query(api.agents.getBySlug, { slug, adminToken: ADMIN_TOKEN });
     if (!found?.agent) return c.json({ error: "agent not found" }, 404);
     const { agent, policy: rawPolicy } = found;
-    if (agent.status !== "active") return c.json({ error: "agent disabled" }, 403);
     if (!verifyKey(token, agent.keyHash)) return c.json({ error: "unauthorized" }, 401);
+    if (agent.status !== "active") return c.json({ error: "agent disabled" }, 403);
     if (!rawPolicy) return c.json({ error: "no policy" }, 500);
 
     const policy: Policy = {

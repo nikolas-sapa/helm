@@ -143,6 +143,13 @@ describe("run ingress (/a/:slug/run)", () => {
     expect(s.recorded()).toHaveLength(0);
   });
 
+  it("returns 401 (not 403) for a disabled agent with a wrong key", async () => {
+    const s = setup({ agent: makeAgent({ status: "disabled" }) });
+    const res = await run(s.app, { input: "x" }, "helm_wrong");
+    expect(res.status).toBe(401);
+    expect(s.runWithProvider).not.toHaveBeenCalled();
+  });
+
   it("returns 500 when the agent has no policy", async () => {
     const s = setup({ policy: null });
     const res = await run(s.app, { input: "x" });
