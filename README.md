@@ -135,7 +135,7 @@ Open **http://127.0.0.1:8787/** to see the agent, its spend, run history, and ed
 ## Tests
 
 ```bash
-npm test          # unit and local integration tests across core / agent / runtime / cli
+npm test          # unit and local integration tests across core / agent / runtime / cli / control-plane
 ```
 
 ## Execution modes
